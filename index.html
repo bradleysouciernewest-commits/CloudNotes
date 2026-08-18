@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Local Notes</title>
+  <title>Local Notes - Dark Mode</title>
 
   <!-- Google Fonts & Material Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,16 +13,23 @@
 
   <style>
     :root {
-      /* Material 3 Colors */
-      --md-sys-color-surface: #f8fafd;
-      --md-sys-color-surface-container: #eceef4;
-      --md-sys-color-on-surface: #1f1f1f;
-      --md-sys-color-on-surface-variant: #444746;
-      --md-sys-color-primary: #0b57d0;
-      --md-sys-color-primary-container: #c2e7ff;
-      --md-sys-color-on-primary-container: #001d35;
-      --md-sys-color-outline: #747775;
-      --md-sys-color-error: #b3261e;
+      /* Material 3 Dark Theme Colors */
+      --md-sys-color-surface: #131314;
+      --md-sys-color-surface-container: #1e1f20;
+      --md-sys-color-surface-container-high: #2b2f31;
+      --md-sys-color-on-surface: #e2e2e2;
+      --md-sys-color-on-surface-variant: #c4c7c5;
+      
+      --md-sys-color-primary: #a8c7fa;
+      --md-sys-color-primary-container: #004a77;
+      --md-sys-color-on-primary-container: #c2e7ff;
+      
+      --md-sys-color-outline: #8e918f;
+      --md-sys-color-error: #ffb4ab;
+      --md-sys-color-error-container: #93000a;
+      
+      --hover-bg: rgba(255, 255, 255, 0.08);
+      --ripple-opacity: 0.12;
     }
 
     * {
@@ -37,9 +44,25 @@
       color: var(--md-sys-color-on-surface);
       height: 100vh;
       overflow: hidden;
+      color-scheme: dark;
     }
 
-    /* Ripple Effect Classes */
+    /* Scrollbar for Dark Mode */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #444746;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #5f6368;
+    }
+
+    /* Improved Ripple Effect */
     .ripple-effect {
       position: relative;
       overflow: hidden;
@@ -48,17 +71,20 @@
     .ripple-span {
       position: absolute;
       border-radius: 50%;
+      background-color: currentColor;
+      opacity: 0;
       transform: scale(0);
-      animation: ripple-anim 600ms linear;
-      background-color: rgba(0, 0, 0, 0.1);
       pointer-events: none;
+      transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms linear;
     }
 
-    @keyframes ripple-anim {
-      to {
-        transform: scale(4);
-        opacity: 0;
-      }
+    .ripple-span.ripple-animate-in {
+      transform: scale(2); /* Scale large enough to cover element */
+      opacity: var(--ripple-opacity);
+    }
+
+    .ripple-span.ripple-animate-out {
+      opacity: 0;
     }
 
     .app {
@@ -68,18 +94,17 @@
 
     /* Sidebar */
     .sidebar {
-      width: 300px;
+      width: 320px;
       background: var(--md-sys-color-surface);
       display: flex;
       flex-direction: column;
-      border-right: none;
     }
 
     .sidebar-header {
       padding: 16px 24px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 24px;
     }
 
     .sidebar-header h1 {
@@ -96,23 +121,22 @@
     .new-note {
       align-self: flex-start;
       border: 0;
-      border-radius: 16px; /* Extended FAB shape */
+      border-radius: 16px; 
       padding: 16px 24px 16px 16px;
-      background: var(--md-sys-color-primary-container);
-      color: var(--md-sys-color-on-primary-container);
+      background: var(--md-sys-color-surface-container-high);
+      color: var(--md-sys-color-primary);
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 8px;
-      box-shadow: 0 1px 2px 0 rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
-      transition: box-shadow 0.2s ease, background 0.2s ease;
+      transition: background 0.2s ease, box-shadow 0.2s ease;
     }
 
     .new-note:hover {
+      background: #33383a;
       box-shadow: 0 1px 3px 0 rgba(0,0,0,0.3), 0 4px 8px 3px rgba(0,0,0,0.15);
-      background: #b5dfff;
     }
 
     .notes {
@@ -124,16 +148,16 @@
       gap: 2px;
     }
 
-    /* Note Items - Pill Shaped */
     .note-item {
-      padding: 12px 16px;
+      padding: 16px;
       border-radius: 24px;
       cursor: pointer;
       transition: background-color 0.2s;
+      user-select: none;
     }
 
     .note-item:hover {
-      background: rgba(0,0,0,0.04);
+      background: var(--hover-bg);
     }
 
     .note-item.active {
@@ -143,23 +167,23 @@
 
     .note-title {
       font-weight: 500;
-      font-size: 14px;
+      font-size: 15px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-bottom: 2px;
+      margin-bottom: 4px;
     }
 
     .note-preview {
       color: var(--md-sys-color-on-surface-variant);
-      font-size: 12px;
+      font-size: 13px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
     .note-item.active .note-preview {
-      color: rgba(0, 29, 53, 0.7); /* Adjusted for active contrast */
+      color: rgba(194, 231, 255, 0.8);
     }
 
     /* Editor */
@@ -168,15 +192,14 @@
       display: flex;
       flex-direction: column;
       min-width: 0;
-      background: #ffffff;
+      background: var(--md-sys-color-surface-container);
       border-radius: 24px;
       margin: 16px 16px 16px 0;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-      overflow: hidden; /* For inner border-radius */
+      overflow: hidden; 
     }
 
     .toolbar {
-      height: 64px;
+      height: 72px;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -187,7 +210,7 @@
       flex: 1;
       border: 0;
       outline: none;
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 400;
       font-family: 'Product Sans', 'Roboto', sans-serif;
       min-width: 0;
@@ -199,31 +222,32 @@
       color: var(--md-sys-color-outline);
     }
 
-    /* Icon Buttons */
     .icon-btn {
       border: none;
       background: transparent;
       border-radius: 50%;
-      width: 40px;
-      height: 40px;
+      width: 48px;
+      height: 48px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       color: var(--md-sys-color-on-surface-variant);
-      transition: background-color 0.2s;
+      transition: background-color 0.2s, color 0.2s;
     }
 
     .icon-btn:hover {
-      background: rgba(0,0,0,0.04);
+      background: var(--hover-bg);
+      color: var(--md-sys-color-on-surface);
     }
 
     #deleteButton {
-      color: var(--md-sys-color-error);
+      color: var(--md-sys-color-outline);
     }
     
     #deleteButton:hover {
-      background: rgba(179, 38, 30, 0.08);
+      background: rgba(255, 180, 171, 0.12); /* Subtle error tint */
+      color: var(--md-sys-color-error);
     }
 
     textarea {
@@ -255,29 +279,31 @@
     }
 
     .empty span.material-symbols-outlined {
-      font-size: 64px;
-      color: #c4c7c5;
-      margin-bottom: 16px;
+      font-size: 72px;
+      color: var(--md-sys-color-surface-container-high);
+      margin-bottom: 24px;
     }
 
     .empty h2 {
       color: var(--md-sys-color-on-surface);
       margin: 0 0 8px;
       font-weight: 400;
+      font-size: 24px;
       font-family: 'Product Sans', sans-serif;
     }
 
-    /* Google-style Snackbar/Toast */
+    /* Google-style Snackbar */
     .status {
       position: fixed;
       bottom: 24px;
       left: 50%;
       transform: translateX(-50%) translateY(20px);
-      background: #323232;
-      color: #f1f3f4;
+      background: #e2e2e2; /* Light snackbar on dark mode */
+      color: #131314;
       padding: 14px 24px;
       border-radius: 8px;
       font-size: 14px;
+      font-weight: 500;
       box-shadow: 0 3px 5px -1px rgba(0,0,0,.2), 0 6px 10px 0 rgba(0,0,0,.14), 0 1px 18px 0 rgba(0,0,0,.12);
       opacity: 0;
       transition: opacity 0.3s ease, transform 0.3s ease;
@@ -285,11 +311,69 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      z-index: 100;
     }
 
     .status.show {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
+    }
+
+    /* Custom Material Dialog */
+    .md-dialog {
+      background: var(--md-sys-color-surface-container-high);
+      color: var(--md-sys-color-on-surface);
+      border: none;
+      border-radius: 28px;
+      padding: 24px;
+      width: 90%;
+      max-width: 320px;
+      box-shadow: 0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.2);
+    }
+
+    .md-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(2px);
+    }
+
+    .md-dialog-title {
+      margin: 0 0 16px;
+      font-size: 24px;
+      font-weight: 400;
+      font-family: 'Product Sans', sans-serif;
+    }
+
+    .md-dialog-desc {
+      margin: 0 0 24px;
+      font-size: 14px;
+      color: var(--md-sys-color-on-surface-variant);
+      line-height: 1.5;
+    }
+
+    .md-dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .text-btn {
+      background: transparent;
+      border: none;
+      color: var(--md-sys-color-primary);
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .text-btn.error {
+      color: var(--md-sys-color-error);
+    }
+
+    .text-btn:hover {
+      background: var(--hover-bg);
     }
 
     @media (max-width: 700px) {
@@ -299,12 +383,10 @@
       .sidebar {
         width: 100%;
         height: 35%;
-        border-right: none;
       }
       .editor {
         margin: 0;
         border-radius: 24px 24px 0 0;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
       }
       .toolbar {
         padding: 0 16px;
@@ -373,39 +455,64 @@
   </main>
 </div>
 
+<!-- Snackbar -->
 <div class="status" id="status">
-  <span class="material-symbols-outlined" style="font-size: 20px;">check_circle</span>
+  <span id="statusIcon" class="material-symbols-outlined" style="font-size: 20px; color: #0b57d0;">check_circle</span>
   <span id="statusText">Saved</span>
 </div>
+
+<!-- Material Dialog -->
+<dialog id="deleteDialog" class="md-dialog">
+  <div class="md-dialog-content">
+    <h3 class="md-dialog-title">Delete note?</h3>
+    <p class="md-dialog-desc">This note will be permanently deleted. This action cannot be undone.</p>
+  </div>
+  <div class="md-dialog-actions">
+    <button id="cancelDeleteBtn" class="text-btn ripple-effect">Cancel</button>
+    <button id="confirmDeleteBtn" class="text-btn error ripple-effect">Delete</button>
+  </div>
+</dialog>
 
 <script>
   /*
     -------------------------
-    Ripple Effect Global Handler
+    Advanced Ripple Effect Handler
     -------------------------
   */
-  document.addEventListener('mousedown', function(e) {
+  document.addEventListener('pointerdown', function(e) {
     const target = e.target.closest('.ripple-effect');
     if (!target) return;
     
-    const circle = document.createElement('span');
-    const diameter = Math.max(target.clientWidth, target.clientHeight);
+    const rect = target.getBoundingClientRect();
+    const diameter = Math.max(rect.width, rect.height) * 1.5; 
     const radius = diameter / 2;
     
-    circle.style.width = circle.style.height = `${diameter}px`;
-    circle.style.left = `${e.clientX - target.getBoundingClientRect().left - radius}px`;
-    circle.style.top = `${e.clientY - target.getBoundingClientRect().top - radius}px`;
+    const circle = document.createElement('span');
     circle.classList.add('ripple-span');
-    
-    // Remove existing ripples so they don't pile up in the DOM
-    const existing = target.querySelector('.ripple-span');
-    if (existing) existing.remove();
+    circle.style.width = circle.style.height = `${diameter}px`;
+    circle.style.left = `${e.clientX - rect.left - radius}px`;
+    circle.style.top = `${e.clientY - rect.top - radius}px`;
     
     target.appendChild(circle);
     
-    setTimeout(() => {
-      circle.remove();
-    }, 600);
+    // Use requestAnimationFrame to ensure the transition triggers
+    requestAnimationFrame(() => {
+      circle.classList.add('ripple-animate-in');
+    });
+
+    // Cleanup logic that triggers ONLY on release/leave
+    const removeRipple = () => {
+      circle.classList.add('ripple-animate-out');
+      // Wait for the fade-out CSS transition to finish before removing from DOM
+      setTimeout(() => circle.remove(), 300);
+      
+      // Clean up listeners
+      window.removeEventListener('pointerup', removeRipple);
+      target.removeEventListener('pointerleave', removeRipple);
+    };
+
+    window.addEventListener('pointerup', removeRipple);
+    target.addEventListener('pointerleave', removeRipple);
   });
 
   const STORAGE_KEY = "local-notes-app";
@@ -420,6 +527,11 @@
   const copyButton = document.getElementById("copyButton");
   const status = document.getElementById("status");
   const statusText = document.getElementById("statusText");
+  
+  // Dialog Elements
+  const deleteDialog = document.getElementById("deleteDialog");
+  const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
+  const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
 
   let notes = loadNotes();
   let currentNoteId = getNoteIdFromURL();
@@ -465,15 +577,15 @@
     const id = generateNoteId();
     notes[id] = {
       id: id,
-      title: "Untitled Note",
+      title: "",
       content: "",
       created: Date.now(),
       updated: Date.now()
     };
     saveNotes();
     openNote(id);
+    renderNotes(); // Full render to insert new note at top
     titleInput.focus();
-    titleInput.select();
   }
 
   function openNote(id) {
@@ -488,40 +600,83 @@
     emptyState.style.display = "none";
     noteEditor.style.display = "flex";
     setNoteURL(id);
-    renderNotes();
+    
+    // Update active class without nuking the DOM (fixes ripple cutoff)
+    const items = document.querySelectorAll('.note-item');
+    items.forEach(item => {
+      if (item.dataset.id === id) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
   }
 
   function showEmpty() {
     currentNoteId = null;
     emptyState.style.display = "flex";
     noteEditor.style.display = "none";
-    renderNotes();
+    
+    const items = document.querySelectorAll('.note-item');
+    items.forEach(item => item.classList.remove('active'));
   }
 
   function updateCurrentNote() {
     if (!currentNoteId || !notes[currentNoteId]) return;
-    notes[currentNoteId].title = titleInput.value.trim() || "Untitled Note";
+    notes[currentNoteId].title = titleInput.value;
     notes[currentNoteId].content = contentInput.value;
     notes[currentNoteId].updated = Date.now();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-    renderNotes();
+    
+    renderNotes(); // Re-render to sort by updated time
     showStatus("Saved");
   }
 
+  /* ------------------------- Custom Dialog Logic ------------------------- */
+  deleteButton.addEventListener("click", () => {
+    if (!currentNoteId || !notes[currentNoteId]) return;
+    deleteDialog.showModal();
+  });
+
+  cancelDeleteBtn.addEventListener("click", () => {
+    deleteDialog.close();
+  });
+
+  confirmDeleteBtn.addEventListener("click", () => {
+    deleteDialog.close();
+    deleteCurrentNote();
+  });
+
+  // Close dialog on backdrop click
+  deleteDialog.addEventListener("click", (e) => {
+    const dialogDimensions = deleteDialog.getBoundingClientRect();
+    if (
+      e.clientX < dialogDimensions.left ||
+      e.clientX > dialogDimensions.right ||
+      e.clientY < dialogDimensions.top ||
+      e.clientY > dialogDimensions.bottom
+    ) {
+      deleteDialog.close();
+    }
+  });
+
   function deleteCurrentNote() {
     if (!currentNoteId || !notes[currentNoteId]) return;
-    const title = notes[currentNoteId].title || "this note";
-    const confirmed = confirm(`Delete "${title}"?`);
-    if (!confirmed) return;
+    
     delete notes[currentNoteId];
     saveNotes();
     setNoteURL(null);
+    
+    renderNotes(); // Full render after deletion
+    
     const remainingIds = Object.keys(notes);
     if (remainingIds.length > 0) {
       openNote(remainingIds[0]);
     } else {
       showEmpty();
     }
+    
+    showStatus("Note deleted");
   }
 
   /* ------------------------- Render sidebar ------------------------- */
@@ -531,8 +686,8 @@
 
     for (const note of noteArray) {
       const item = document.createElement("div");
-      // Added ripple-effect class to list items for Material feel
       item.className = "note-item ripple-effect"; 
+      item.dataset.id = note.id; // Crucial for tracking active state smoothly
       
       if (note.id === currentNoteId) {
         item.classList.add("active");
@@ -544,7 +699,7 @@
 
       const preview = document.createElement("div");
       preview.className = "note-preview";
-      preview.textContent = note.content ? note.content.replace(/\s+/g, " ").trim() : "Empty note";
+      preview.textContent = note.content ? note.content.replace(/\s+/g, " ").trim() : "No additional text";
 
       item.appendChild(title);
       item.appendChild(preview);
@@ -582,42 +737,28 @@
     clearTimeout(statusTimeout);
     statusTimeout = setTimeout(() => {
       status.classList.remove("show");
-    }, 2500); // Slightly longer for Material snackbars
+    }, 3000); 
   }
 
   /* ------------------------- Event listeners ------------------------- */
   newNoteButton.addEventListener("click", createNote);
   titleInput.addEventListener("input", updateCurrentNote);
   contentInput.addEventListener("input", updateCurrentNote);
-  deleteButton.addEventListener("click", deleteCurrentNote);
   copyButton.addEventListener("click", copyNoteURL);
 
   window.addEventListener("popstate", () => {
     const id = getNoteIdFromURL();
     if (id && notes[id]) {
-      openNoteWithoutHistory(id);
+      openNote(id);
     } else {
       showEmpty();
     }
   });
 
-  function openNoteWithoutHistory(id) {
-    if (!notes[id]) {
-      showEmpty();
-      return;
-    }
-    currentNoteId = id;
-    titleInput.value = notes[id].title;
-    contentInput.value = notes[id].content;
-    emptyState.style.display = "none";
-    noteEditor.style.display = "flex";
-    renderNotes();
-  }
-
   /* ------------------------- Start app ------------------------- */
   renderNotes();
   if (currentNoteId && notes[currentNoteId]) {
-    openNoteWithoutHistory(currentNoteId);
+    openNote(currentNoteId);
   } else {
     showEmpty();
   }
@@ -625,3 +766,4 @@
 
 </body>
 </html>
+
