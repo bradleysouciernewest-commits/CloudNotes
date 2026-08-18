@@ -62,7 +62,7 @@
       background: #5f6368;
     }
 
-    /* Improved Ripple Effect */
+    /* Improved Ripple Effect - Slowed down to 600ms */
     .ripple-effect {
       position: relative;
       overflow: hidden;
@@ -75,7 +75,7 @@
       opacity: 0;
       transform: scale(0);
       pointer-events: none;
-      transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms linear;
+      transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1), opacity 600ms linear;
     }
 
     .ripple-span.ripple-animate-in {
@@ -504,7 +504,7 @@
     const removeRipple = () => {
       circle.classList.add('ripple-animate-out');
       // Wait for the fade-out CSS transition to finish before removing from DOM
-      setTimeout(() => circle.remove(), 300);
+      setTimeout(() => circle.remove(), 600); // Changed to 600ms to match new CSS timing
       
       // Clean up listeners
       window.removeEventListener('pointerup', removeRipple);
@@ -766,4 +766,5 @@
 
 </body>
 </html>
+
 
