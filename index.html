@@ -62,7 +62,7 @@
       background: #5f6368;
     }
 
-    /* Improved Ripple Effect - Slowed down to 600ms */
+    /* Guaranteed Ripple Expansion */
     .ripple-effect {
       position: relative;
       overflow: hidden;
@@ -75,11 +75,12 @@
       opacity: 0;
       transform: scale(0);
       pointer-events: none;
-      transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1), opacity 600ms linear;
+      /* 600ms expansion, 300ms fadeout */
+      transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms linear;
     }
 
     .ripple-span.ripple-animate-in {
-      transform: scale(2); /* Scale large enough to cover element */
+      transform: scale(2.5); /* Scale large enough to always hit far corners */
       opacity: var(--ripple-opacity);
     }
 
@@ -246,7 +247,7 @@
     }
     
     #deleteButton:hover {
-      background: rgba(255, 180, 171, 0.12); /* Subtle error tint */
+      background: rgba(255, 180, 171, 0.12);
       color: var(--md-sys-color-error);
     }
 
@@ -298,7 +299,7 @@
       bottom: 24px;
       left: 50%;
       transform: translateX(-50%) translateY(20px);
-      background: #e2e2e2; /* Light snackbar on dark mode */
+      background: #e2e2e2;
       color: #131314;
       padding: 14px 24px;
       border-radius: 8px;
@@ -476,7 +477,7 @@
 <script>
   /*
     -------------------------
-    Advanced Ripple Effect Handler
+    Advanced Ripple Effect Handler (Guaranteed Expansion)
     -------------------------
   */
   document.addEventListener('pointerdown', function(e) {
@@ -484,7 +485,7 @@
     if (!target) return;
     
     const rect = target.getBoundingClientRect();
-    const diameter = Math.max(rect.width, rect.height) * 1.5; 
+    const diameter = Math.max(rect.width, rect.height); 
     const radius = diameter / 2;
     
     const circle = document.createElement('span');
@@ -495,16 +496,25 @@
     
     target.appendChild(circle);
     
-    // Use requestAnimationFrame to ensure the transition triggers
+    const startTime = Date.now();
+    
     requestAnimationFrame(() => {
       circle.classList.add('ripple-animate-in');
     });
 
-    // Cleanup logic that triggers ONLY on release/leave
     const removeRipple = () => {
-      circle.classList.add('ripple-animate-out');
-      // Wait for the fade-out CSS transition to finish before removing from DOM
-      setTimeout(() => circle.remove(), 600); // Changed to 600ms to match new CSS timing
+      const timeElapsed = Date.now() - startTime;
+      
+      // Calculate delay. Force the ripple to stay alive for a minimum of 450ms.
+      // This guarantees the expansion animation reaches the edges even if you
+      // click and release very rapidly.
+      const delay = Math.max(0, 450 - timeElapsed);
+      
+      setTimeout(() => {
+        circle.classList.add('ripple-animate-out');
+        // Wait 300ms for the fade-out CSS transition to finish before removing from DOM
+        setTimeout(() => circle.remove(), 300);
+      }, delay);
       
       // Clean up listeners
       window.removeEventListener('pointerup', removeRipple);
