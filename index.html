@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Local Notes - Dark Mode</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Local Notes</title>
 
   <!-- Google Fonts & Material Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,11 +12,34 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 
   <style>
-    :root {
-      /* Material 3 Dark Theme Colors */
+    /* Theme Variables */
+    :root[data-theme="light"] {
+      --md-sys-color-surface: #fdfbff;
+      --md-sys-color-surface-container: #f4f3f7;
+      --md-sys-color-surface-container-high: #eaeaef;
+      --md-sys-color-surface-container-highest: #e4e2e6;
+      --md-sys-color-on-surface: #1a1b1e;
+      --md-sys-color-on-surface-variant: #44474e;
+      
+      --md-sys-color-primary: #0b57d0;
+      --md-sys-color-primary-container: #d3e3fd;
+      --md-sys-color-on-primary-container: #041e49;
+      
+      --md-sys-color-outline: #74777f;
+      --md-sys-color-error: #ba1a1a;
+      --md-sys-color-error-container: #ffdad6;
+      
+      --hover-bg: rgba(0, 0, 0, 0.05);
+      --ripple-opacity: 0.12;
+      --shadow-color: rgba(0, 0, 0, 0.15);
+      color-scheme: light;
+    }
+
+    :root[data-theme="dark"] {
       --md-sys-color-surface: #131314;
       --md-sys-color-surface-container: #1e1f20;
       --md-sys-color-surface-container-high: #2b2f31;
+      --md-sys-color-surface-container-highest: #363a3c;
       --md-sys-color-on-surface: #e2e2e2;
       --md-sys-color-on-surface-variant: #c4c7c5;
       
@@ -30,6 +53,8 @@
       
       --hover-bg: rgba(255, 255, 255, 0.08);
       --ripple-opacity: 0.12;
+      --shadow-color: rgba(0, 0, 0, 0.4);
+      color-scheme: dark;
     }
 
     * {
@@ -44,23 +69,17 @@
       color: var(--md-sys-color-on-surface);
       height: 100vh;
       overflow: hidden;
-      color-scheme: dark;
+      transition: background-color 0.3s, color 0.3s;
     }
 
-    /* Scrollbar for Dark Mode */
-    ::-webkit-scrollbar {
-      width: 8px;
-    }
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb {
-      background: #444746;
+      background: var(--md-sys-color-surface-container-highest);
       border-radius: 4px;
     }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #5f6368;
-    }
+    ::-webkit-scrollbar-thumb:hover { background: var(--md-sys-color-outline); }
 
     /* Guaranteed Ripple Expansion */
     .ripple-effect {
@@ -75,18 +94,14 @@
       opacity: 0;
       transform: scale(0);
       pointer-events: none;
-      /* 600ms expansion, 300ms fadeout */
       transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms linear;
     }
 
     .ripple-span.ripple-animate-in {
-      transform: scale(2.5); /* Scale large enough to always hit far corners */
+      transform: scale(2.5);
       opacity: var(--ripple-opacity);
     }
-
-    .ripple-span.ripple-animate-out {
-      opacity: 0;
-    }
+    .ripple-span.ripple-animate-out { opacity: 0; }
 
     .app {
       display: flex;
@@ -99,16 +114,23 @@
       background: var(--md-sys-color-surface);
       display: flex;
       flex-direction: column;
+      transition: background-color 0.3s;
     }
 
     .sidebar-header {
       padding: 16px 24px;
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: 20px;
     }
 
-    .sidebar-header h1 {
+    .sidebar-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sidebar-top h1 {
       margin: 0;
       font-size: 22px;
       font-weight: 500;
@@ -132,12 +154,12 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      transition: background 0.2s ease, box-shadow 0.2s ease;
+      transition: background 0.2s ease, box-shadow 0.2s ease, color 0.3s;
     }
 
     .new-note:hover {
-      background: #33383a;
-      box-shadow: 0 1px 3px 0 rgba(0,0,0,0.3), 0 4px 8px 3px rgba(0,0,0,0.15);
+      box-shadow: 0 1px 3px 0 var(--shadow-color), 0 4px 8px 3px rgba(0,0,0,0.05);
+      background: var(--md-sys-color-surface-container-highest);
     }
 
     .notes {
@@ -153,13 +175,14 @@
       padding: 16px;
       border-radius: 24px;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: background-color 0.2s, color 0.3s;
+      /* Prevent native context menus/selections on touch/hold */
       user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
 
-    .note-item:hover {
-      background: var(--hover-bg);
-    }
+    .note-item:hover { background: var(--hover-bg); }
 
     .note-item.active {
       background: var(--md-sys-color-primary-container);
@@ -184,7 +207,8 @@
     }
 
     .note-item.active .note-preview {
-      color: rgba(194, 231, 255, 0.8);
+      color: inherit;
+      opacity: 0.8;
     }
 
     /* Editor */
@@ -197,6 +221,7 @@
       border-radius: 24px;
       margin: 16px 16px 16px 0;
       overflow: hidden; 
+      transition: background-color 0.3s;
     }
 
     .toolbar {
@@ -217,11 +242,10 @@
       min-width: 0;
       background: transparent;
       color: var(--md-sys-color-on-surface);
+      transition: color 0.3s;
     }
 
-    .toolbar input::placeholder {
-      color: var(--md-sys-color-outline);
-    }
+    .toolbar input::placeholder { color: var(--md-sys-color-outline); }
 
     .icon-btn {
       border: none;
@@ -242,10 +266,7 @@
       color: var(--md-sys-color-on-surface);
     }
 
-    #deleteButton {
-      color: var(--md-sys-color-outline);
-    }
-    
+    #deleteButton { color: var(--md-sys-color-outline); }
     #deleteButton:hover {
       background: rgba(255, 180, 171, 0.12);
       color: var(--md-sys-color-error);
@@ -263,11 +284,9 @@
       font-size: 16px;
       line-height: 1.6;
       color: var(--md-sys-color-on-surface);
+      transition: color 0.3s;
     }
-    
-    textarea::placeholder {
-      color: var(--md-sys-color-outline);
-    }
+    textarea::placeholder { color: var(--md-sys-color-outline); }
 
     .empty {
       flex: 1;
@@ -293,14 +312,55 @@
       font-family: 'Product Sans', sans-serif;
     }
 
+    /* Context Menu */
+    .context-menu {
+      position: absolute;
+      background: var(--md-sys-color-surface-container-highest);
+      border-radius: 12px;
+      min-width: 200px;
+      padding: 8px 0;
+      box-shadow: 0 8px 24px var(--shadow-color), 0 2px 8px rgba(0,0,0,0.1);
+      z-index: 1000;
+      display: none;
+      opacity: 0;
+      transform: scale(0.95);
+      transform-origin: top left;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .context-menu.show {
+      display: block;
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .context-menu-item {
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      color: var(--md-sys-color-on-surface);
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+      user-select: none;
+    }
+
+    .context-menu-item:hover { background: var(--hover-bg); }
+    .context-menu-item .material-symbols-outlined { font-size: 20px; }
+    
+    .context-menu-item.danger { color: var(--md-sys-color-error); }
+    .context-menu-item.danger:hover { background: rgba(186, 26, 26, 0.08); }
+
     /* Google-style Snackbar */
     .status {
       position: fixed;
       bottom: 24px;
       left: 50%;
       transform: translateX(-50%) translateY(20px);
-      background: #e2e2e2;
-      color: #131314;
+      background: var(--md-sys-color-on-surface);
+      color: var(--md-sys-color-surface);
       padding: 14px 24px;
       border-radius: 8px;
       font-size: 14px;
@@ -369,32 +429,15 @@
       font-family: inherit;
     }
 
-    .text-btn.error {
-      color: var(--md-sys-color-error);
-    }
-
-    .text-btn:hover {
-      background: var(--hover-bg);
-    }
+    .text-btn.error { color: var(--md-sys-color-error); }
+    .text-btn:hover { background: var(--hover-bg); }
 
     @media (max-width: 700px) {
-      .app {
-        flex-direction: column;
-      }
-      .sidebar {
-        width: 100%;
-        height: 35%;
-      }
-      .editor {
-        margin: 0;
-        border-radius: 24px 24px 0 0;
-      }
-      .toolbar {
-        padding: 0 16px;
-      }
-      textarea {
-        padding: 0 16px 16px 16px;
-      }
+      .app { flex-direction: column; }
+      .sidebar { width: 100%; height: 35%; }
+      .editor { margin: 0; border-radius: 24px 24px 0 0; }
+      .toolbar { padding: 0 16px; }
+      textarea { padding: 0 16px 16px 16px; }
     }
   </style>
 </head>
@@ -405,10 +448,15 @@
 
   <aside class="sidebar">
     <div class="sidebar-header">
-      <h1>
-        <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">description</span>
-        Notes
-      </h1>
+      <div class="sidebar-top">
+        <h1>
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">description</span>
+          Notes
+        </h1>
+        <button class="icon-btn ripple-effect" id="themeToggleBtn" title="Toggle Theme">
+          <span class="material-symbols-outlined" id="themeIcon">light_mode</span>
+        </button>
+      </div>
       <button class="new-note ripple-effect" id="newNoteButton">
         <span class="material-symbols-outlined">add</span>
         New Note
@@ -419,7 +467,6 @@
   </aside>
 
   <main class="editor">
-
     <div id="emptyState" class="empty">
       <span class="material-symbols-outlined">edit_note</span>
       <h2>No note selected</h2>
@@ -427,38 +474,36 @@
     </div>
 
     <div id="noteEditor" style="display:none; height:100%; flex-direction:column;">
-
       <div class="toolbar">
-        <input
-          id="titleInput"
-          type="text"
-          placeholder="Untitled note"
-          autocomplete="off"
-        >
-
+        <input id="titleInput" type="text" placeholder="Untitled note" autocomplete="off">
         <button class="icon-btn ripple-effect" id="copyButton" title="Copy note URL">
           <span class="material-symbols-outlined">link</span>
         </button>
-
         <button class="icon-btn ripple-effect" id="deleteButton" title="Delete note">
           <span class="material-symbols-outlined">delete</span>
         </button>
       </div>
-
-      <textarea
-        id="contentInput"
-        placeholder="Start writing..."
-        spellcheck="true"
-      ></textarea>
-
+      <textarea id="contentInput" placeholder="Start writing..." spellcheck="true"></textarea>
     </div>
-
   </main>
+</div>
+
+<!-- Context Menu -->
+<div id="contextMenu" class="context-menu">
+  <div class="context-menu-item ripple-effect" id="ctxDuplicate">
+    <span class="material-symbols-outlined">content_copy</span> Duplicate
+  </div>
+  <div class="context-menu-item ripple-effect" id="ctxCopyLink">
+    <span class="material-symbols-outlined">link</span> Copy Link
+  </div>
+  <div class="context-menu-item danger ripple-effect" id="ctxDelete">
+    <span class="material-symbols-outlined">delete</span> Delete
+  </div>
 </div>
 
 <!-- Snackbar -->
 <div class="status" id="status">
-  <span id="statusIcon" class="material-symbols-outlined" style="font-size: 20px; color: #0b57d0;">check_circle</span>
+  <span id="statusIcon" class="material-symbols-outlined" style="font-size: 20px; color: var(--md-sys-color-primary);">check_circle</span>
   <span id="statusText">Saved</span>
 </div>
 
@@ -475,11 +520,48 @@
 </dialog>
 
 <script>
-  /*
-    -------------------------
-    Advanced Ripple Effect Handler (Guaranteed Expansion)
-    -------------------------
-  */
+  /* ------------------------- Theme Management ------------------------- */
+  const html = document.documentElement;
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const themeIcon = document.getElementById('themeIcon');
+  
+  function initTheme() {
+    const params = new URLSearchParams(window.location.search);
+    let theme = params.get('theme');
+    
+    if (!theme) {
+      theme = localStorage.getItem('theme');
+    }
+    if (!theme) {
+      theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    
+    setTheme(theme, true);
+  }
+
+  function setTheme(theme, replaceUrl = false) {
+    html.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    themeIcon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+    
+    // Update URL helper without reloading
+    const url = new URL(window.location.href);
+    url.searchParams.set('theme', theme);
+    if (replaceUrl) {
+      history.replaceState({}, "", url);
+    } else {
+      history.pushState({}, "", url);
+    }
+  }
+
+  themeToggleBtn.addEventListener('click', () => {
+    const current = html.getAttribute('data-theme');
+    setTheme(current === 'dark' ? 'light' : 'dark');
+  });
+
+  initTheme();
+
+  /* ------------------------- Advanced Ripple Effect ------------------------- */
   document.addEventListener('pointerdown', function(e) {
     const target = e.target.closest('.ripple-effect');
     if (!target) return;
@@ -495,28 +577,19 @@
     circle.style.top = `${e.clientY - rect.top - radius}px`;
     
     target.appendChild(circle);
-    
     const startTime = Date.now();
     
-    requestAnimationFrame(() => {
-      circle.classList.add('ripple-animate-in');
-    });
+    requestAnimationFrame(() => circle.classList.add('ripple-animate-in'));
 
     const removeRipple = () => {
       const timeElapsed = Date.now() - startTime;
-      
-      // Calculate delay. Force the ripple to stay alive for a minimum of 450ms.
-      // This guarantees the expansion animation reaches the edges even if you
-      // click and release very rapidly.
       const delay = Math.max(0, 450 - timeElapsed);
       
       setTimeout(() => {
         circle.classList.add('ripple-animate-out');
-        // Wait 300ms for the fade-out CSS transition to finish before removing from DOM
         setTimeout(() => circle.remove(), 300);
       }, delay);
       
-      // Clean up listeners
       window.removeEventListener('pointerup', removeRipple);
       target.removeEventListener('pointerleave', removeRipple);
     };
@@ -525,6 +598,7 @@
     target.addEventListener('pointerleave', removeRipple);
   });
 
+  /* ------------------------- App State & Elements ------------------------- */
   const STORAGE_KEY = "local-notes-app";
 
   const notesList = document.getElementById("notesList");
@@ -543,6 +617,13 @@
   const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
   const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
 
+  // Context Menu Elements
+  const contextMenu = document.getElementById("contextMenu");
+  const ctxDuplicate = document.getElementById("ctxDuplicate");
+  const ctxCopyLink = document.getElementById("ctxCopyLink");
+  const ctxDelete = document.getElementById("ctxDelete");
+  let targetContextNoteId = null;
+
   let notes = loadNotes();
   let currentNoteId = getNoteIdFromURL();
 
@@ -551,32 +632,85 @@
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       return saved ? JSON.parse(saved) : {};
-    } catch (error) {
-      console.error("Could not load notes:", error);
-      return {};
-    }
+    } catch (e) { return {}; }
   }
 
   function saveNotes() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-    showStatus("Saved");
   }
 
   /* ------------------------- URL handling ------------------------- */
   function getNoteIdFromURL() {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("note");
+    return new URLSearchParams(window.location.search).get("note");
   }
 
   function setNoteURL(id) {
     const url = new URL(window.location.href);
-    if (id) {
-      url.searchParams.set("note", id);
-    } else {
-      url.searchParams.delete("note");
-    }
-    history.pushState({}, "", url);
+    if (id) url.searchParams.set("note", id);
+    else url.searchParams.delete("note");
+    history.replaceState({}, "", url); // Use replace to preserve theme param smoothly
   }
+
+  /* ------------------------- Context Menu Logic ------------------------- */
+  function showContextMenu(x, y, noteId) {
+    targetContextNoteId = noteId;
+    
+    // Boundary checks
+    contextMenu.style.display = 'block';
+    const menuWidth = contextMenu.offsetWidth;
+    const menuHeight = contextMenu.offsetHeight;
+    const winWidth = window.innerWidth;
+    const winHeight = window.innerHeight;
+    
+    if (x + menuWidth > winWidth) x = winWidth - menuWidth - 8;
+    if (y + menuHeight > winHeight) y = winHeight - menuHeight - 8;
+    
+    contextMenu.style.left = `${x}px`;
+    contextMenu.style.top = `${y}px`;
+    
+    // Small delay to allow display:block to apply before animating opacity/scale
+    requestAnimationFrame(() => contextMenu.classList.add('show'));
+  }
+
+  function hideContextMenu() {
+    if (contextMenu.classList.contains('show')) {
+      contextMenu.classList.remove('show');
+      setTimeout(() => { contextMenu.style.display = 'none'; }, 150);
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!contextMenu.contains(e.target)) hideContextMenu();
+  });
+  
+  // Context Actions
+  ctxDuplicate.addEventListener('click', () => {
+    if (!targetContextNoteId || !notes[targetContextNoteId]) return;
+    const og = notes[targetContextNoteId];
+    const newId = generateNoteId();
+    notes[newId] = {
+      id: newId,
+      title: og.title ? `${og.title} (Copy)` : "Untitled Note (Copy)",
+      content: og.content,
+      created: Date.now(),
+      updated: Date.now()
+    };
+    saveNotes();
+    openNote(newId);
+    renderNotes();
+    hideContextMenu();
+    showStatus("Note duplicated");
+  });
+
+  ctxCopyLink.addEventListener('click', () => {
+    hideContextMenu();
+    copySpecificNoteURL(targetContextNoteId);
+  });
+
+  ctxDelete.addEventListener('click', () => {
+    hideContextMenu();
+    openDeleteDialog(targetContextNoteId);
+  });
 
   /* ------------------------- Note Operations ------------------------- */
   function generateNoteId() {
@@ -585,24 +719,15 @@
 
   function createNote() {
     const id = generateNoteId();
-    notes[id] = {
-      id: id,
-      title: "",
-      content: "",
-      created: Date.now(),
-      updated: Date.now()
-    };
+    notes[id] = { id, title: "", content: "", created: Date.now(), updated: Date.now() };
     saveNotes();
     openNote(id);
-    renderNotes(); // Full render to insert new note at top
+    renderNotes();
     titleInput.focus();
   }
 
   function openNote(id) {
-    if (!notes[id]) {
-      showEmpty();
-      return;
-    }
+    if (!notes[id]) return showEmpty();
     currentNoteId = id;
     const note = notes[id];
     titleInput.value = note.title;
@@ -611,14 +736,8 @@
     noteEditor.style.display = "flex";
     setNoteURL(id);
     
-    // Update active class without nuking the DOM (fixes ripple cutoff)
-    const items = document.querySelectorAll('.note-item');
-    items.forEach(item => {
-      if (item.dataset.id === id) {
-        item.classList.add('active');
-      } else {
-        item.classList.remove('active');
-      }
+    document.querySelectorAll('.note-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.id === id);
     });
   }
 
@@ -626,9 +745,8 @@
     currentNoteId = null;
     emptyState.style.display = "flex";
     noteEditor.style.display = "none";
-    
-    const items = document.querySelectorAll('.note-item');
-    items.forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('.note-item').forEach(i => i.classList.remove('active'));
+    setNoteURL(null);
   }
 
   function updateCurrentNote() {
@@ -636,60 +754,49 @@
     notes[currentNoteId].title = titleInput.value;
     notes[currentNoteId].content = contentInput.value;
     notes[currentNoteId].updated = Date.now();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-    
-    renderNotes(); // Re-render to sort by updated time
+    saveNotes();
+    renderNotes();
     showStatus("Saved");
   }
 
-  /* ------------------------- Custom Dialog Logic ------------------------- */
-  deleteButton.addEventListener("click", () => {
-    if (!currentNoteId || !notes[currentNoteId]) return;
+  /* ------------------------- Deletion Logic ------------------------- */
+  let noteToDelete = null;
+
+  function openDeleteDialog(id) {
+    if (!id || !notes[id]) return;
+    noteToDelete = id;
     deleteDialog.showModal();
-  });
+  }
 
-  cancelDeleteBtn.addEventListener("click", () => {
-    deleteDialog.close();
-  });
-
+  deleteButton.addEventListener("click", () => openDeleteDialog(currentNoteId));
+  cancelDeleteBtn.addEventListener("click", () => { deleteDialog.close(); noteToDelete = null; });
   confirmDeleteBtn.addEventListener("click", () => {
+    if (noteToDelete) deleteSpecificNote(noteToDelete);
     deleteDialog.close();
-    deleteCurrentNote();
   });
 
-  // Close dialog on backdrop click
   deleteDialog.addEventListener("click", (e) => {
-    const dialogDimensions = deleteDialog.getBoundingClientRect();
-    if (
-      e.clientX < dialogDimensions.left ||
-      e.clientX > dialogDimensions.right ||
-      e.clientY < dialogDimensions.top ||
-      e.clientY > dialogDimensions.bottom
-    ) {
+    const rect = deleteDialog.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
       deleteDialog.close();
     }
   });
 
-  function deleteCurrentNote() {
-    if (!currentNoteId || !notes[currentNoteId]) return;
-    
-    delete notes[currentNoteId];
+  function deleteSpecificNote(id) {
+    delete notes[id];
     saveNotes();
-    setNoteURL(null);
+    renderNotes();
     
-    renderNotes(); // Full render after deletion
-    
-    const remainingIds = Object.keys(notes);
-    if (remainingIds.length > 0) {
-      openNote(remainingIds[0]);
-    } else {
-      showEmpty();
+    if (currentNoteId === id) {
+      const remainingIds = Object.keys(notes);
+      if (remainingIds.length > 0) openNote(remainingIds[0]);
+      else showEmpty();
     }
-    
     showStatus("Note deleted");
+    noteToDelete = null;
   }
 
-  /* ------------------------- Render sidebar ------------------------- */
+  /* ------------------------- Render Sidebar ------------------------- */
   function renderNotes() {
     notesList.innerHTML = "";
     const noteArray = Object.values(notes).sort((a, b) => b.updated - a.updated);
@@ -697,11 +804,8 @@
     for (const note of noteArray) {
       const item = document.createElement("div");
       item.className = "note-item ripple-effect"; 
-      item.dataset.id = note.id; // Crucial for tracking active state smoothly
-      
-      if (note.id === currentNoteId) {
-        item.classList.add("active");
-      }
+      item.dataset.id = note.id;
+      if (note.id === currentNoteId) item.classList.add("active");
 
       const title = document.createElement("div");
       title.className = "note-title";
@@ -714,24 +818,46 @@
       item.appendChild(title);
       item.appendChild(preview);
 
-      item.addEventListener("click", () => {
-        openNote(note.id);
+      // Standard Click
+      item.addEventListener("click", () => openNote(note.id));
+
+      // PC Right Click
+      item.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showContextMenu(e.pageX, e.pageY, note.id);
       });
+
+      // Mobile Long Press Logic
+      let touchTimer;
+      item.addEventListener('touchstart', (e) => {
+        hideContextMenu();
+        touchTimer = setTimeout(() => {
+          // If held for 500ms, trigger context menu at touch coordinates
+          const touch = e.touches[0];
+          showContextMenu(touch.pageX, touch.pageY, note.id);
+          // Haptic feedback if supported
+          if(navigator.vibrate) navigator.vibrate(50);
+        }, 500);
+      }, {passive: true});
+
+      item.addEventListener('touchend', () => clearTimeout(touchTimer));
+      item.addEventListener('touchmove', () => clearTimeout(touchTimer));
 
       notesList.appendChild(item);
     }
   }
 
   /* ------------------------- Utility ------------------------- */
-  async function copyNoteURL() {
-    if (!currentNoteId) return;
-    const url = window.location.href;
+  async function copySpecificNoteURL(id) {
+    if (!id) return;
+    const urlObj = new URL(window.location.href);
+    urlObj.searchParams.set("note", id);
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(urlObj.toString());
       showStatus("Link copied to clipboard");
-    } catch (error) {
+    } catch (e) {
       const input = document.createElement("input");
-      input.value = url;
+      input.value = urlObj.toString();
       document.body.appendChild(input);
       input.select();
       document.execCommand("copy");
@@ -740,40 +866,34 @@
     }
   }
 
+  copyButton.addEventListener("click", () => copySpecificNoteURL(currentNoteId));
+
   let statusTimeout;
   function showStatus(message) {
     statusText.textContent = message;
     status.classList.add("show");
     clearTimeout(statusTimeout);
-    statusTimeout = setTimeout(() => {
-      status.classList.remove("show");
-    }, 3000); 
+    statusTimeout = setTimeout(() => status.classList.remove("show"), 3000); 
   }
 
   /* ------------------------- Event listeners ------------------------- */
   newNoteButton.addEventListener("click", createNote);
   titleInput.addEventListener("input", updateCurrentNote);
   contentInput.addEventListener("input", updateCurrentNote);
-  copyButton.addEventListener("click", copyNoteURL);
 
   window.addEventListener("popstate", () => {
+    initTheme(); // Also check theme on history navigation
     const id = getNoteIdFromURL();
-    if (id && notes[id]) {
-      openNote(id);
-    } else {
-      showEmpty();
-    }
+    if (id && notes[id]) openNote(id);
+    else showEmpty();
   });
 
   /* ------------------------- Start app ------------------------- */
   renderNotes();
-  if (currentNoteId && notes[currentNoteId]) {
-    openNote(currentNoteId);
-  } else {
-    showEmpty();
-  }
-</script>
+  if (currentNoteId && notes[currentNoteId]) openNote(currentNoteId);
+  else showEmpty();
 
+</script>
 </body>
 </html>
 
