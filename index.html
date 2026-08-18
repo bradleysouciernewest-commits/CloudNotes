@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local Notes</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+      color: #222;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .app {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 280px;
+      background: #ffffff;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      padding: 18px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .sidebar-header h1 {
+      margin: 0 0 12px;
+      font-size: 22px;
+    }
+
+    .new-note {
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      padding: 11px;
+      background: #222;
+      color: white;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .new-note:hover {
+      background: #444;
+    }
+
+    .notes {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .note-item {
+      padding: 14px 16px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+
+    .note-item:hover {
+      background: #f2f2f2;
+    }
+
+    .note-item.active {
+      background: #e8e8e8;
+    }
+
+    .note-title {
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .note-preview {
+      color: #777;
+      font-size: 13px;
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Editor */
+    .editor {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .toolbar {
+      height: 62px;
+      border-bottom: 1px solid #ddd;
+      background: white;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 18px;
+    }
+
+    .toolbar input {
+      flex: 1;
+      border: 0;
+      outline: none;
+      font-size: 21px;
+      font-weight: 600;
+      min-width: 0;
+    }
+
+    .toolbar button {
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 7px;
+      padding: 8px 11px;
+      cursor: pointer;
+    }
+
+    .toolbar button:hover {
+      background: #f1f1f1;
+    }
+
+    #deleteButton {
+      color: #c62828;
+    }
+
+    textarea {
+      flex: 1;
+      width: 100%;
+      border: 0;
+      outline: none;
+      resize: none;
+      padding: 30px;
+      background: #fff;
+      font-family: inherit;
+      font-size: 17px;
+      line-height: 1.6;
+    }
+
+    .empty {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      color: #777;
+      padding: 30px;
+    }
+
+    .empty h2 {
+      color: #444;
+      margin-bottom: 8px;
+    }
+
+    .status {
+      position: fixed;
+      bottom: 15px;
+      right: 20px;
+      background: #222;
+      color: white;
+      padding: 7px 11px;
+      border-radius: 6px;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+
+    .status.show {
+      opacity: 1;
+    }
+
+    @media (max-width: 700px) {
+      .sidebar {
+        width: 210px;
+      }
+
+      textarea {
+        padding: 20px;
+      }
+
+      .toolbar {
+        padding: 0 10px;
+      }
+
+      .toolbar input {
+        font-size: 17px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1>📝 Notes</h1>
+      <button class="new-note" id="newNoteButton">
+        + New Note
+      </button>
+    </div>
+
+    <div class="notes" id="notesList"></div>
+  </aside>
+
+  <main class="editor">
+
+    <div id="emptyState" class="empty">
+      <div>
+        <h2>No note selected</h2>
+        <p>Create a note to get started.</p>
+      </div>
+    </div>
+
+    <div id="noteEditor" style="display:none; height:100%; flex-direction:column;">
+
+      <div class="toolbar">
+        <input
+          id="titleInput"
+          type="text"
+          placeholder="Untitled note"
+          autocomplete="off"
+        >
+
+        <button id="copyButton" title="Copy note URL">
+          🔗
+        </button>
+
+        <button id="deleteButton" title="Delete note">
+          🗑
+        </button>
+      </div>
+
+      <textarea
+        id="contentInput"
+        placeholder="Start writing..."
+        spellcheck="true"
+      ></textarea>
+
+    </div>
+
+  </main>
+</div>
+
+<div class="status" id="status">Saved</div>
+
+<script>
+  const STORAGE_KEY = "local-notes-app";
+
+  const notesList = document.getElementById("notesList");
+  const newNoteButton = document.getElementById("newNoteButton");
+
+  const emptyState = document.getElementById("emptyState");
+  const noteEditor = document.getElementById("noteEditor");
+
+  const titleInput = document.getElementById("titleInput");
+  const contentInput = document.getElementById("contentInput");
+
+  const deleteButton = document.getElementById("deleteButton");
+  const copyButton = document.getElementById("copyButton");
+
+  const status = document.getElementById("status");
+
+  let notes = loadNotes();
+  let currentNoteId = getNoteIdFromURL();
+
+  /*
+    -------------------------
+    LocalStorage
+    -------------------------
+  */
+
+  function loadNotes() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+
+      if (!saved) {
+        return {};
+      }
+
+      return JSON.parse(saved);
+    } catch (error) {
+      console.error("Could not load notes:", error);
+      return {};
+    }
+  }
+
+  function saveNotes() {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(notes)
+    );
+
+    showStatus("Saved");
+  }
+
+  /*
+    -------------------------
+    URL handling
+    -------------------------
+  */
+
+  function getNoteIdFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("note");
+  }
+
+  function setNoteURL(id) {
+    const url = new URL(window.location.href);
+
+    if (id) {
+      url.searchParams.set("note", id);
+    } else {
+      url.searchParams.delete("note");
+    }
+
+    history.pushState({}, "", url);
+  }
+
+  /*
+    -------------------------
+    Generate note IDs
+    -------------------------
+  */
+
+  function generateNoteId() {
+    return (
+      Date.now().toString(36) +
+      Math.random().toString(36).substring(2, 8)
+    );
+  }
+
+  /*
+    -------------------------
+    Create note
+    -------------------------
+  */
+
+  function createNote() {
+    const id = generateNoteId();
+
+    notes[id] = {
+      id: id,
+      title: "Untitled Note",
+      content: "",
+      created: Date.now(),
+      updated: Date.now()
+    };
+
+    saveNotes();
+
+    openNote(id);
+    titleInput.focus();
+    titleInput.select();
+  }
+
+  /*
+    -------------------------
+    Open note
+    -------------------------
+  */
+
+  function openNote(id) {
+
+    if (!notes[id]) {
+      showEmpty();
+      return;
+    }
+
+    currentNoteId = id;
+
+    const note = notes[id];
+
+    titleInput.value = note.title;
+    contentInput.value = note.content;
+
+    emptyState.style.display = "none";
+    noteEditor.style.display = "flex";
+
+    setNoteURL(id);
+
+    renderNotes();
+  }
+
+  /*
+    -------------------------
+    Empty state
+    -------------------------
+  */
+
+  function showEmpty() {
+    currentNoteId = null;
+
+    emptyState.style.display = "flex";
+    noteEditor.style.display = "none";
+
+    renderNotes();
+  }
+
+  /*
+    -------------------------
+    Update note
+    -------------------------
+  */
+
+  function updateCurrentNote() {
+
+    if (!currentNoteId || !notes[currentNoteId]) {
+      return;
+    }
+
+    notes[currentNoteId].title =
+      titleInput.value.trim() || "Untitled Note";
+
+    notes[currentNoteId].content =
+      contentInput.value;
+
+    notes[currentNoteId].updated =
+      Date.now();
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(notes)
+    );
+
+    renderNotes();
+
+    showStatus("Saved");
+  }
+
+  /*
+    -------------------------
+    Delete note
+    -------------------------
+  */
+
+  function deleteCurrentNote() {
+
+    if (!currentNoteId || !notes[currentNoteId]) {
+      return;
+    }
+
+    const title =
+      notes[currentNoteId].title || "this note";
+
+    const confirmed =
+      confirm(`Delete "${title}"?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    delete notes[currentNoteId];
+
+    saveNotes();
+
+    setNoteURL(null);
+
+    const remainingIds =
+      Object.keys(notes);
+
+    if (remainingIds.length > 0) {
+      openNote(remainingIds[0]);
+    } else {
+      showEmpty();
+    }
+  }
+
+  /*
+    -------------------------
+    Render sidebar
+    -------------------------
+  */
+
+  function renderNotes() {
+
+    notesList.innerHTML = "";
+
+    const noteArray =
+      Object.values(notes)
+        .sort((a, b) => b.updated - a.updated);
+
+    for (const note of noteArray) {
+
+      const item =
+        document.createElement("div");
+
+      item.className = "note-item";
+
+      if (note.id === currentNoteId) {
+        item.classList.add("active");
+      }
+
+      const title =
+        document.createElement("div");
+
+      title.className = "note-title";
+
+      title.textContent =
+        note.title || "Untitled Note";
+
+      const preview =
+        document.createElement("div");
+
+      preview.className = "note-preview";
+
+      preview.textContent =
+        note.content
+          ? note.content.replace(/\s+/g, " ").trim()
+          : "Empty note";
+
+      item.appendChild(title);
+      item.appendChild(preview);
+
+      item.addEventListener("click", () => {
+        openNote(note.id);
+      });
+
+      notesList.appendChild(item);
+    }
+  }
+
+  /*
+    -------------------------
+    Copy URL
+    -------------------------
+  */
+
+  async function copyNoteURL() {
+
+    if (!currentNoteId) {
+      return;
+    }
+
+    const url =
+      window.location.href;
+
+    try {
+      await navigator.clipboard.writeText(url);
+
+      showStatus("URL copied!");
+    } catch (error) {
+
+      /*
+        Clipboard APIs can be blocked
+        on some browsers/file:// pages.
+      */
+
+      const input =
+        document.createElement("input");
+
+      input.value = url;
+
+      document.body.appendChild(input);
+
+      input.select();
+
+      document.execCommand("copy");
+
+      input.remove();
+
+      showStatus("URL copied!");
+    }
+  }
+
+  /*
+    -------------------------
+    Status message
+    -------------------------
+  */
+
+  let statusTimeout;
+
+  function showStatus(message) {
+
+    status.textContent = message;
+
+    status.classList.add("show");
+
+    clearTimeout(statusTimeout);
+
+    statusTimeout =
+      setTimeout(() => {
+        status.classList.remove("show");
+      }, 1000);
+  }
+
+  /*
+    -------------------------
+    Event listeners
+    -------------------------
+  */
+
+  newNoteButton.addEventListener(
+    "click",
+    createNote
+  );
+
+  titleInput.addEventListener(
+    "input",
+    updateCurrentNote
+  );
+
+  contentInput.addEventListener(
+    "input",
+    updateCurrentNote
+  );
+
+  deleteButton.addEventListener(
+    "click",
+    deleteCurrentNote
+  );
+
+  copyButton.addEventListener(
+    "click",
+    copyNoteURL
+  );
+
+  /*
+    Browser back/forward buttons
+  */
+
+  window.addEventListener(
+    "popstate",
+    () => {
+
+      const id =
+        getNoteIdFromURL();
+
+      if (id && notes[id]) {
+        openNoteWithoutHistory(id);
+      } else {
+        showEmpty();
+      }
+    }
+  );
+
+  /*
+    Same as openNote(),
+    but doesn't add another history entry.
+  */
+
+  function openNoteWithoutHistory(id) {
+
+    if (!notes[id]) {
+      showEmpty();
+      return;
+    }
+
+    currentNoteId = id;
+
+    titleInput.value =
+      notes[id].title;
+
+    contentInput.value =
+      notes[id].content;
+
+    emptyState.style.display =
+      "none";
+
+    noteEditor.style.display =
+      "flex";
+
+    renderNotes();
+  }
+
+  /*
+    -------------------------
+    Start app
+    -------------------------
+  */
+
+  renderNotes();
+
+  if (currentNoteId && notes[currentNoteId]) {
+    openNoteWithoutHistory(currentNoteId);
+  } else {
+    showEmpty();
+  }
+</script>
+
+</body>
+</html>
