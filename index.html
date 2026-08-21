@@ -1254,6 +1254,31 @@
     });
   });
 
+  document.addEventListener('click', function (e) {
+    const target = e.target.closest('.ripple-effect');
+    if (!target) return;
+    
+    const circle = document.createElement('span');
+    const diameter = Math.max(target.clientWidth, target.clientHeight);
+    const radius = diameter / 2;
+    
+    circle.style.width = circle.style.height = `${diameter}px`;
+    circle.style.left = `${e.clientX - target.getBoundingClientRect().left - radius}px`;
+    circle.style.top = `${e.clientY - target.getBoundingClientRect().top - radius}px`;
+    circle.classList.add('ripple-span');
+    
+    target.appendChild(circle);
+    
+    setTimeout(() => {
+      circle.classList.add('ripple-animate-in');
+    }, 10);
+    
+    setTimeout(() => {
+      circle.classList.add('ripple-animate-out');
+      setTimeout(() => circle.remove(), 300);
+    }, 400);
+  });
+
   copyButton.addEventListener("click", () => copySpecificNoteURL(currentNoteId));
   shareBtn.addEventListener("click", () => openShareDialog(currentNoteId));
   copyShareUrlBtn.addEventListener("click", () => { copyShareUrl(targetContextNoteId); showStatus("Share link copied!"); });
