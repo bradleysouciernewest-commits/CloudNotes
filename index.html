@@ -444,7 +444,7 @@
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
       background: var(--md-sys-color-surface);
-      display: flex;
+      display: none; /* Hidden by default to prevent flash before auth state check */
       justify-content: center;
       align-items: center;
       z-index: 2000;
@@ -858,12 +858,10 @@
         notes = cloudNotes;
         renderNotes();
         
-        // Handle opened note resolution
+        // Handle opened note resolution from URL parameter
         if (currentNoteId && notes[currentNoteId]) {
-          // Note exists, sidebar active state updated via renderNotes()
-          // We do NOT strictly overwrite the inputs here if the user is actively typing,
-          // but for simplicity we rely on optimistic updates and assume 1 device writes at a time.
-        } else if (currentNoteId && !notes[currentNoteId]) {
+          openNote(currentNoteId);
+        } else {
           showEmpty();
         }
       }, (error) => {
@@ -1054,8 +1052,11 @@
     if (!notes[id]) return showEmpty();
     currentNoteId = id;
     const note = notes[id];
-    titleInput.value = note.title;
-    contentInput.value = note.content;
+    
+    // Only update inputs if they aren't actively focused by the user
+    if (document.activeElement !== titleInput) titleInput.value = note.title;
+    if (document.activeElement !== contentInput) contentInput.value = note.content;
+    
     emptyState.style.display = "none";
     noteEditor.style.display = "flex";
     setNoteURL(id);
