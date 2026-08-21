@@ -279,6 +279,24 @@
       color: var(--md-sys-color-error);
     }
 
+    #shareBtn { color: var(--md-sys-color-outline); }
+    #shareBtn.shared {
+      color: var(--md-sys-color-primary);
+      background: var(--md-sys-color-primary-container);
+    }
+    
+    .shared-banner {
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 500;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
     textarea {
       flex: 1;
       width: 100%;
@@ -659,8 +677,21 @@
     </div>
 
     <div id="noteEditor" style="display:none; height:100%; flex-direction:column;">
+      <div id="sharedBanner" class="shared-banner" style="display: none;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="material-symbols-outlined" style="font-size: 20px;">public</span>
+          <span>Viewing Shared Note (Read-Only)</span>
+        </div>
+        <button id="closeSharedBtn" class="text-btn ripple-effect" style="padding: 4px 12px; font-size: 12px;">
+          My Notes
+        </button>
+      </div>
+
       <div class="toolbar">
         <input id="titleInput" type="text" placeholder="Untitled note" autocomplete="off">
+        <button class="icon-btn ripple-effect" id="shareBtn" title="Share note">
+          <span class="material-symbols-outlined" id="shareIcon">share</span>
+        </button>
         <button class="icon-btn ripple-effect" id="copyButton" title="Copy note URL">
           <span class="material-symbols-outlined">link</span>
         </button>
@@ -675,6 +706,9 @@
 
 <!-- Context Menu -->
 <div id="contextMenu" class="context-menu">
+  <div class="context-menu-item ripple-effect" id="ctxShare">
+    <span class="material-symbols-outlined">share</span> Share Note
+  </div>
   <div class="context-menu-item ripple-effect" id="ctxDuplicate">
     <span class="material-symbols-outlined">content_copy</span> Duplicate
   </div>
@@ -704,6 +738,32 @@
   </div>
 </dialog>
 
+<dialog id="shareDialog" class="md-dialog">
+  <div class="md-dialog-content">
+    <h3 class="md-dialog-title" style="display: flex; align-items: center; gap: 10px;">
+      <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">share</span>
+      Share Note
+    </h3>
+    <p class="md-dialog-desc">Anyone with this link will be able to view this note in real time.</p>
+    
+    <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+      <input type="text" id="shareUrlInput" readonly class="auth-input" style="flex: 1; font-size: 13px; padding: 12px;" />
+      <button id="copyShareUrlBtn" class="text-btn ripple-effect" style="background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); border-radius: 12px; white-space: nowrap;">
+        Copy Link
+      </button>
+    </div>
+
+    <div id="shareStatusInfo" style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; margin-bottom: 16px; color: var(--md-sys-color-on-surface-variant);">
+      <span class="material-symbols-outlined" style="font-size: 20px;" id="shareStatusIcon">public_off</span>
+      <span id="shareStatusText">This note is currently private.</span>
+    </div>
+  </div>
+  <div class="md-dialog-actions" style="justify-content: space-between;">
+    <button id="toggleShareBtn" class="text-btn ripple-effect">Share Note</button>
+    <button id="closeShareBtn" class="text-btn ripple-effect">Done</button>
+  </div>
+</dialog>
+
 <script type="module">
   // Firebase SDKs
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -721,6 +781,7 @@
     collection, 
     doc, 
     setDoc, 
+    getDoc,
     deleteDoc, 
     onSnapshot 
   } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -747,7 +808,24 @@
   let userId = null;
   let notes = {};
   let currentNoteId = getNoteIdFromURL();
+  let isViewingShared = false;
   let unsubNotes = null;
+
+  // DOM Elements
+  const shareBtn = document.getElementById("shareBtn");
+  const shareIcon = document.getElementById("shareIcon");
+  const sharedBanner = document.getElementById("sharedBanner");
+  const closeSharedBtn = document.getElementById("closeSharedBtn");
+
+  const shareDialog = document.getElementById("shareDialog");
+  const shareUrlInput = document.getElementById("shareUrlInput");
+  const copyShareUrlBtn = document.getElementById("copyShareUrlBtn");
+  const shareStatusIcon = document.getElementById("shareStatusIcon");
+  const shareStatusText = document.getElementById("shareStatusText");
+  const toggleShareBtn = document.getElementById("toggleShareBtn");
+  const closeShareBtn = document.getElementById("closeShareBtn");
+
+  const ctxShare = document.getElementById("ctxShare");
 
   // DOM Elements for Auth
   const authScreen = document.getElementById('authScreen');
@@ -919,99 +997,130 @@
     return new URLSearchParams(window.location.search).get("note");
   }
 
+  function getShareIdFromURL() {
+    return new URLSearchParams(window.location.search).get("share");
+  }
+
   function setNoteURL(id) {
     const url = new URL(window.location.href);
+    url.searchParams.delete("share");
     if (id) url.searchParams.set("note", id);
     else url.searchParams.delete("note");
     history.replaceState({}, "", url); 
   }
 
-  document.addEventListener('pointerdown', function(e) {
-    const target = e.target.closest('.ripple-effect');
-    if (!target) return;
-    
-    const rect = target.getBoundingClientRect();
-    const diameter = Math.max(rect.width, rect.height); 
-    const radius = diameter / 2;
-    
-    const circle = document.createElement('span');
-    circle.classList.add('ripple-span');
-    circle.style.width = circle.style.height = `${diameter}px`;
-    circle.style.left = `${e.clientX - rect.left - radius}px`;
-    circle.style.top = `${e.clientY - rect.top - radius}px`;
-    
-    target.appendChild(circle);
-    const startTime = Date.now();
-    
-    requestAnimationFrame(() => circle.classList.add('ripple-animate-in'));
-
-    const removeRipple = () => {
-      const timeElapsed = Date.now() - startTime;
-      const delay = Math.max(0, 450 - timeElapsed);
-      setTimeout(() => {
-        circle.classList.add('ripple-animate-out');
-        setTimeout(() => circle.remove(), 300);
-      }, delay);
-      window.removeEventListener('pointerup', removeRipple);
-      target.removeEventListener('pointerleave', removeRipple);
-    };
-
-    window.addEventListener('pointerup', removeRipple);
-    target.addEventListener('pointerleave', removeRipple);
-  });
-
-  function showContextMenu(x, y, noteId) {
-    targetContextNoteId = noteId;
-    contextMenu.style.display = 'block';
-    const menuWidth = contextMenu.offsetWidth;
-    const menuHeight = contextMenu.offsetHeight;
-    const winWidth = window.innerWidth;
-    const winHeight = window.innerHeight;
-    
-    if (x + menuWidth > winWidth) x = winWidth - menuWidth - 8;
-    if (y + menuHeight > winHeight) y = winHeight - menuHeight - 8;
-    
-    contextMenu.style.left = `${x}px`;
-    contextMenu.style.top = `${y}px`;
-    requestAnimationFrame(() => contextMenu.classList.add('show'));
+  function setShareURL(shareId) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("note");
+    if (shareId) url.searchParams.set("share", shareId);
+    else url.searchParams.delete("share");
+    history.replaceState({}, "", url);
   }
 
-  function hideContextMenu() {
-    if (contextMenu.classList.contains('show')) {
-      contextMenu.classList.remove('show');
-      setTimeout(() => { contextMenu.style.display = 'none'; }, 150);
+  async function loadSharedNote(shareId) {
+    try {
+      showStatus("Loading shared note...");
+      const sharedDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'sharedNotes', shareId);
+      const docSnap = await getDoc(sharedDocRef);
+
+      if (docSnap.exists()) {
+        const sharedNote = docSnap.data();
+        isViewingShared = true;
+        currentNoteId = null;
+        
+        emptyState.style.display = "none";
+        noteEditor.style.display = "flex";
+        
+        titleInput.value = sharedNote.title || "Untitled Shared Note";
+        contentInput.value = sharedNote.content || "";
+        
+        titleInput.readOnly = true;
+        contentInput.readOnly = true;
+        
+        sharedBanner.style.display = "flex";
+        shareBtn.style.display = "none";
+        deleteButton.style.display = "none";
+        
+        showStatus("Viewing shared note");
+      } else {
+        showStatus("Shared note not found or unshared");
+        closeSharedView();
+      }
+    } catch (e) {
+      console.error("Error loading shared note:", e);
+      showStatus("Failed to load shared note");
     }
   }
 
-  document.addEventListener('click', (e) => {
-    if (!contextMenu.contains(e.target)) hideContextMenu();
-  });
-  
-  ctxDuplicate.addEventListener('click', async () => {
-    if (!userId || !targetContextNoteId || !notes[targetContextNoteId]) return;
-    const og = notes[targetContextNoteId];
-    const newId = generateNoteId();
-    const duplicatedNote = {
-      id: newId,
-      title: og.title ? `${og.title} (Copy)` : "Untitled Note (Copy)",
-      content: og.content,
-      created: Date.now(),
-      updated: Date.now()
-    };
+  function closeSharedView() {
+    isViewingShared = false;
+    titleInput.readOnly = false;
+    contentInput.readOnly = false;
+    sharedBanner.style.display = "none";
+    shareBtn.style.display = "flex";
+    deleteButton.style.display = "flex";
+    setShareURL(null);
     
-    // Optimistic UI updates
-    notes[newId] = duplicatedNote;
-    openNote(newId);
-    renderNotes();
+    if (userId && currentNoteId && notes[currentNoteId]) {
+      openNote(currentNoteId);
+    } else {
+      showEmpty();
+    }
+  }
+
+  // Context menu share click
+  ctxShare.addEventListener("click", () => {
     hideContextMenu();
-    
-    // Cloud commit
-    try {
-      await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', newId), duplicatedNote);
-      showStatus("Note duplicated");
-    } catch (e) {
-      console.error(e);
-      showStatus("Failed to duplicate note");
+    openShareDialog(targetContextNoteId);
+  });
+
+  // Monitor Auth State and Sync Firestore
+  onAuthStateChanged(auth, (user) => {
+    const shareId = getShareIdFromURL();
+
+    if (user) {
+      userId = user.uid;
+      authScreen.style.display = 'none';
+      
+      const notesRef = collection(db, 'artifacts', appId, 'users', userId, 'notes');
+      
+      unsubNotes = onSnapshot(notesRef, (snapshot) => {
+        const cloudNotes = {};
+        snapshot.forEach(docSnap => {
+          cloudNotes[docSnap.id] = docSnap.data();
+        });
+        
+        notes = cloudNotes;
+        renderNotes();
+        
+        if (shareId) {
+          loadSharedNote(shareId);
+        } else if (currentNoteId && notes[currentNoteId]) {
+          openNote(currentNoteId);
+        } else {
+          showEmpty();
+        }
+      }, (error) => {
+        console.error("Firestore sync error:", error);
+        showStatus("Error syncing cloud notes");
+      });
+
+    } else {
+      userId = null;
+      if (unsubNotes) {
+        unsubNotes();
+        unsubNotes = null;
+      }
+      notes = {};
+      renderNotes();
+      
+      if (shareId) {
+        authScreen.style.display = 'none';
+        loadSharedNote(shareId);
+      } else {
+        authScreen.style.display = 'flex';
+        showEmpty();
+      }
     }
   });
 
@@ -1049,11 +1158,14 @@
   }
 
   function openNote(id) {
+    if (isViewingShared) closeSharedView();
     if (!notes[id]) return showEmpty();
     currentNoteId = id;
     const note = notes[id];
     
-    // Only update inputs if they aren't actively focused by the user
+    titleInput.readOnly = false;
+    contentInput.readOnly = false;
+
     if (document.activeElement !== titleInput) titleInput.value = note.title;
     if (document.activeElement !== contentInput) contentInput.value = note.content;
     
@@ -1061,9 +1173,65 @@
     noteEditor.style.display = "flex";
     setNoteURL(id);
     
+    updateShareBtnState(note.isShared);
+
     document.querySelectorAll('.note-item').forEach(item => {
       item.classList.toggle('active', item.dataset.id === id);
     });
+  }
+
+  function updateShareBtnState(isShared) {
+    if (isShared) {
+      shareBtn.classList.add('shared');
+      shareIcon.textContent = 'public';
+      shareBtn.title = 'Shared Note (Click to manage)';
+    } else {
+      shareBtn.classList.remove('shared');
+      shareIcon.textContent = 'share';
+      shareBtn.title = 'Share note';
+    }
+  }
+
+  function showEmpty() {
+    currentNoteId = null;
+    emptyState.style.display = "flex";
+    noteEditor.style.display = "none";
+    document.querySelectorAll('.note-item').forEach(i => i.classList.remove('active'));
+    setNoteURL(null);
+  }
+
+  let cloudSaveTimeout;
+  function updateCurrentNote() {
+    if (isViewingShared) return;
+    if (!userId || !currentNoteId || !notes[currentNoteId]) return;
+    
+    notes[currentNoteId].title = titleInput.value;
+    notes[currentNoteId].content = contentInput.value;
+    notes[currentNoteId].updated = Date.now();
+    renderNotes();
+    
+    clearTimeout(cloudSaveTimeout);
+    cloudSaveTimeout = setTimeout(async () => {
+      try {
+        await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', currentNoteId), notes[currentNoteId]);
+        
+        // Live sync shared document if note is shared
+        if (notes[currentNoteId].isShared) {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sharedNotes', currentNoteId), {
+            id: currentNoteId,
+            title: notes[currentNoteId].title || "Untitled Note",
+            content: notes[currentNoteId].content || "",
+            ownerId: userId,
+            updatedAt: Date.now()
+          });
+        }
+
+        showStatus("Saved to cloud");
+      } catch (e) {
+        console.error(e);
+        showStatus("Error saving to cloud");
+      }
+    }, 1000);
   }
 
   function showEmpty() {
@@ -1122,7 +1290,7 @@
   async function deleteSpecificNote(id) {
     if (!userId) return;
     
-    // Optimistic update
+    const wasShared = notes[id]?.isShared;
     delete notes[id];
     renderNotes();
     if (currentNoteId === id) {
@@ -1132,12 +1300,134 @@
     }
     noteToDelete = null;
 
-    // Cloud commit
     try {
       await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', id));
+      if (wasShared) {
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sharedNotes', id));
+      }
       showStatus("Note deleted");
     } catch(e) {
       console.error(e); showStatus("Error deleting note");
+    }
+  }
+
+  async function toggleNoteShare(id) {
+    if (!userId || !id || !notes[id]) return;
+    const note = notes[id];
+    
+    if (note.isShared) {
+      await unshareNote(id);
+    } else {
+      await shareNote(id);
+    }
+  }
+
+  async function shareNote(id) {
+    if (!userId || !id || !notes[id]) return;
+    const note = notes[id];
+    
+    try {
+      showStatus("Sharing note...");
+      // 1. Write to public shared notes
+      const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'sharedNotes', id);
+      await setDoc(publicRef, {
+        id: id,
+        title: note.title || "Untitled Note",
+        content: note.content || "",
+        ownerId: userId,
+        updatedAt: Date.now()
+      });
+
+      // 2. Update private note status
+      note.isShared = true;
+      notes[id] = note;
+      await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', id), note);
+      
+      updateShareBtnState(true);
+      renderNotes();
+      updateShareDialogUI(id);
+      
+      copyShareUrl(id);
+      showStatus("Link copied & note shared!");
+    } catch (e) {
+      console.error("Error sharing note:", e);
+      showStatus("Failed to share note");
+    }
+  }
+
+  async function unshareNote(id) {
+    if (!userId || !id || !notes[id]) return;
+    const note = notes[id];
+    
+    try {
+      showStatus("Unsharing note...");
+      // 1. Remove from public shared notes
+      const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'sharedNotes', id);
+      await deleteDoc(publicRef);
+
+      // 2. Update private note status
+      note.isShared = false;
+      notes[id] = note;
+      await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', id), note);
+      
+      updateShareBtnState(false);
+      renderNotes();
+      updateShareDialogUI(id);
+      showStatus("Note unshared");
+    } catch (e) {
+      console.error("Error unsharing note:", e);
+      showStatus("Failed to unshare note");
+    }
+  }
+
+  function getShareUrl(id) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("share", id);
+    url.searchParams.delete("note");
+    return url.toString();
+  }
+
+  async function copyShareUrl(id) {
+    const urlStr = getShareUrl(id);
+    try {
+      await navigator.clipboard.writeText(urlStr);
+    } catch (e) {
+      const input = document.createElement("input");
+      input.value = urlStr;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      input.remove();
+    }
+  }
+
+  function openShareDialog(id) {
+    if (!id || !notes[id]) return;
+    targetContextNoteId = id;
+    updateShareDialogUI(id);
+    shareDialog.showModal();
+  }
+
+  function updateShareDialogUI(id) {
+    const note = notes[id];
+    if (!note) return;
+    
+    const urlStr = getShareUrl(id);
+    shareUrlInput.value = urlStr;
+
+    if (note.isShared) {
+      shareStatusIcon.textContent = "public";
+      shareStatusIcon.style.color = "var(--md-sys-color-primary)";
+      shareStatusText.textContent = "This note is public and accessible via link.";
+      toggleShareBtn.textContent = "Unshare Note";
+      toggleShareBtn.className = "text-btn error ripple-effect";
+    } else {
+      shareStatusIcon.textContent = "public_off";
+      shareStatusIcon.style.color = "var(--md-sys-color-outline)";
+      shareStatusText.textContent = "This note is currently private.";
+      toggleShareBtn.textContent = "Share Note";
+      toggleShareBtn.className = "text-btn ripple-effect";
+      toggleShareBtn.style.color = "var(--md-sys-color-primary)";
     }
   }
 
@@ -1153,7 +1443,25 @@
 
       const title = document.createElement("div");
       title.className = "note-title";
-      title.textContent = note.title || "Untitled Note";
+      title.style.display = "flex";
+      title.style.alignItems = "center";
+      title.style.justifyContent = "space-between";
+
+      const titleText = document.createElement("span");
+      titleText.textContent = note.title || "Untitled Note";
+      titleText.style.overflow = "hidden";
+      titleText.style.textOverflow = "ellipsis";
+      title.appendChild(titleText);
+
+      if (note.isShared) {
+        const shareBadge = document.createElement("span");
+        shareBadge.className = "material-symbols-outlined";
+        shareBadge.style.fontSize = "16px";
+        shareBadge.style.opacity = "0.7";
+        shareBadge.textContent = "public";
+        shareBadge.title = "Shared Note";
+        title.appendChild(shareBadge);
+      }
 
       const preview = document.createElement("div");
       preview.className = "note-preview";
@@ -1221,6 +1529,38 @@
     initTheme(); 
     const id = getNoteIdFromURL();
     if (id && notes[id]) openNote(id);
+    else showEmpty();
+  });
+
+</script>
+</body>
+</html>
+  shareBtn.addEventListener("click", () => openShareDialog(currentNoteId));
+  copyShareUrlBtn.addEventListener("click", () => {
+    copyShareUrl(targetContextNoteId);
+    showStatus("Share link copied!");
+  });
+  toggleShareBtn.addEventListener("click", () => toggleNoteShare(targetContextNoteId));
+  closeShareBtn.addEventListener("click", () => shareDialog.close());
+  closeSharedBtn.addEventListener("click", () => closeSharedView());
+
+  shareDialog.addEventListener("click", (e) => {
+    const rect = shareDialog.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+      shareDialog.close();
+    }
+  });
+
+  newNoteButton.addEventListener("click", createNote);
+  titleInput.addEventListener("input", updateCurrentNote);
+  contentInput.addEventListener("input", updateCurrentNote);
+
+  window.addEventListener("popstate", () => {
+    initTheme(); 
+    const shareId = getShareIdFromURL();
+    const id = getNoteIdFromURL();
+    if (shareId) loadSharedNote(shareId);
+    else if (id && notes[id]) openNote(id);
     else showEmpty();
   });
 
