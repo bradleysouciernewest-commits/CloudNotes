@@ -765,31 +765,17 @@
 </dialog>
 
 <script type="module">
-  // Firebase SDKs
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
   import { 
-    getAuth, 
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
-    GoogleAuthProvider, 
-    signInWithPopup, 
-    onAuthStateChanged, 
-    signOut 
+    getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, 
+    GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut 
   } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
   import { 
-    getFirestore, 
-    collection, 
-    doc, 
-    setDoc, 
-    getDoc,
-    deleteDoc, 
-    onSnapshot 
+    getFirestore, collection, doc, setDoc, getDoc,
+    deleteDoc, onSnapshot 
   } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  // App ID resolution
   const appId = typeof __app_id !== 'undefined' ? __app_id : 'localnotes-a7de4';
-
-  // Your web app's Firebase configuration
   const firebaseConfig = {
     apiKey: "AIzaSyDZBJVcgOOUu6dGt42OxA4R2fziaJxeQRU",
     authDomain: "localnotes-a7de4.firebaseapp.com",
@@ -800,7 +786,6 @@
     measurementId: "G-55D8SQS89H"
   };
 
-  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
@@ -810,8 +795,8 @@
   let currentNoteId = getNoteIdFromURL();
   let isViewingShared = false;
   let unsubNotes = null;
+  let targetContextNoteId = null;
 
-  // DOM Elements
   const shareBtn = document.getElementById("shareBtn");
   const shareIcon = document.getElementById("shareIcon");
   const sharedBanner = document.getElementById("sharedBanner");
@@ -825,9 +810,6 @@
   const toggleShareBtn = document.getElementById("toggleShareBtn");
   const closeShareBtn = document.getElementById("closeShareBtn");
 
-  const ctxShare = document.getElementById("ctxShare");
-
-  // DOM Elements for Auth
   const authScreen = document.getElementById('authScreen');
   const tabLogin = document.getElementById('tabLogin');
   const tabSignup = document.getElementById('tabSignup');
@@ -838,61 +820,6 @@
   const authErrorMsg = document.getElementById('authErrorMsg');
   const btnGoogleSignIn = document.getElementById('btnGoogleSignIn');
   const logoutBtn = document.getElementById('logoutBtn');
-
-  let isLoginMode = true;
-
-  // Toggle Login/Signup Modes
-  function setAuthMode(login) {
-    isLoginMode = login;
-    if (login) {
-      tabLogin.classList.add('active');
-      tabSignup.classList.remove('active');
-      authSubmitBtn.textContent = 'Login';
-    } else {
-      tabSignup.classList.add('active');
-      tabLogin.classList.remove('active');
-      authSubmitBtn.textContent = 'Sign Up';
-    }
-    authErrorMsg.textContent = '';
-  }
-
-  tabLogin.addEventListener('click', () => setAuthMode(true));
-  tabSignup.addEventListener('click', () => setAuthMode(false));
-
-  // Handle Form Submit (Email/Password)
-  authForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = authEmail.value;
-    const password = authPassword.value;
-    authErrorMsg.textContent = '';
-    authSubmitBtn.disabled = true;
-
-    try {
-      if (isLoginMode) {
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        await createUserWithEmailAndPassword(auth, email, password);
-      }
-    } catch (error) {
-      authErrorMsg.textContent = error.message.replace('Firebase: ', '');
-    } finally {
-      authSubmitBtn.disabled = false;
-    }
-  });
-
-  // Handle Google Sign In
-  btnGoogleSignIn.addEventListener('click', async () => {
-    const provider = new GoogleAuthProvider();
-    authErrorMsg.textContent = '';
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      authErrorMsg.textContent = error.message.replace('Firebase: ', '');
-    }
-  });
-
-  // Handle Sign Out
-  logoutBtn.addEventListener('click', () => signOut(auth));
 
   const notesList = document.getElementById("notesList");
   const newNoteButton = document.getElementById("newNoteButton");
@@ -905,64 +832,47 @@
   const status = document.getElementById("status");
   const statusText = document.getElementById("statusText");
   
-  // Dialog Elements
   const deleteDialog = document.getElementById("deleteDialog");
   const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
   const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
 
-  // Context Menu Elements
   const contextMenu = document.getElementById("contextMenu");
+  const ctxShare = document.getElementById("ctxShare");
   const ctxDuplicate = document.getElementById("ctxDuplicate");
   const ctxCopyLink = document.getElementById("ctxCopyLink");
   const ctxDelete = document.getElementById("ctxDelete");
-  let targetContextNoteId = null;
 
-  // Monitor Auth State and Sync Firestore
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      // Logged in
-      userId = user.uid;
-      authScreen.style.display = 'none';
-      
-      // Start listening to user's private cloud notes
-      const notesRef = collection(db, 'artifacts', appId, 'users', userId, 'notes');
-      
-      unsubNotes = onSnapshot(notesRef, (snapshot) => {
-        const cloudNotes = {};
-        snapshot.forEach(docSnap => {
-          cloudNotes[docSnap.id] = docSnap.data();
-        });
-        
-        notes = cloudNotes;
-        renderNotes();
-        
-        // Handle opened note resolution from URL parameter
-        if (currentNoteId && notes[currentNoteId]) {
-          openNote(currentNoteId);
-        } else {
-          showEmpty();
-        }
-      }, (error) => {
-        console.error("Firestore sync error:", error);
-        showStatus("Error syncing cloud notes");
-      });
-
+  let isLoginMode = true;
+  function setAuthMode(login) {
+    isLoginMode = login;
+    if (login) {
+      tabLogin.classList.add('active'); tabSignup.classList.remove('active'); authSubmitBtn.textContent = 'Login';
     } else {
-      // Logged out
-      userId = null;
-      authScreen.style.display = 'flex';
-      
-      // Clean up listeners and local state
-      if (unsubNotes) {
-        unsubNotes();
-        unsubNotes = null;
-      }
-      notes = {};
-      renderNotes();
-      showEmpty();
+      tabSignup.classList.add('active'); tabLogin.classList.remove('active'); authSubmitBtn.textContent = 'Sign Up';
     }
+    authErrorMsg.textContent = '';
+  }
+
+  tabLogin.addEventListener('click', () => setAuthMode(true));
+  tabSignup.addEventListener('click', () => setAuthMode(false));
+
+  authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    authErrorMsg.textContent = '';
+    authSubmitBtn.disabled = true;
+    try {
+      if (isLoginMode) await signInWithEmailAndPassword(auth, authEmail.value, authPassword.value);
+      else await createUserWithEmailAndPassword(auth, authEmail.value, authPassword.value);
+    } catch (error) { authErrorMsg.textContent = error.message.replace('Firebase: ', ''); } 
+    finally { authSubmitBtn.disabled = false; }
   });
 
+  btnGoogleSignIn.addEventListener('click', async () => {
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); } 
+    catch (error) { authErrorMsg.textContent = error.message.replace('Firebase: ', ''); }
+  });
+  
+  logoutBtn.addEventListener('click', () => signOut(auth));
 
   const html = document.documentElement;
   const themeToggleBtn = document.getElementById('themeToggleBtn');
@@ -970,8 +880,7 @@
   
   function initTheme() {
     const params = new URLSearchParams(window.location.search);
-    let theme = params.get('theme');
-    if (!theme) theme = localStorage.getItem('theme');
+    let theme = params.get('theme') || localStorage.getItem('theme');
     if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     setTheme(theme, true);
   }
@@ -986,34 +895,23 @@
     else history.pushState({}, "", url);
   }
 
-  themeToggleBtn.addEventListener('click', () => {
-    const current = html.getAttribute('data-theme');
-    setTheme(current === 'dark' ? 'light' : 'dark');
-  });
-
+  themeToggleBtn.addEventListener('click', () => setTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
   initTheme();
 
-  function getNoteIdFromURL() {
-    return new URLSearchParams(window.location.search).get("note");
-  }
-
-  function getShareIdFromURL() {
-    return new URLSearchParams(window.location.search).get("share");
-  }
+  function getNoteIdFromURL() { return new URLSearchParams(window.location.search).get("note"); }
+  function getShareIdFromURL() { return new URLSearchParams(window.location.search).get("share"); }
 
   function setNoteURL(id) {
     const url = new URL(window.location.href);
     url.searchParams.delete("share");
-    if (id) url.searchParams.set("note", id);
-    else url.searchParams.delete("note");
+    if (id) url.searchParams.set("note", id); else url.searchParams.delete("note");
     history.replaceState({}, "", url); 
   }
 
   function setShareURL(shareId) {
     const url = new URL(window.location.href);
     url.searchParams.delete("note");
-    if (shareId) url.searchParams.set("share", shareId);
-    else url.searchParams.delete("share");
+    if (shareId) url.searchParams.set("share", shareId); else url.searchParams.delete("share");
     history.replaceState({}, "", url);
   }
 
@@ -1025,56 +923,37 @@
 
       if (docSnap.exists()) {
         const sharedNote = docSnap.data();
-        isViewingShared = true;
-        currentNoteId = null;
+        isViewingShared = true; currentNoteId = null;
         
         emptyState.style.display = "none";
         noteEditor.style.display = "flex";
-        
         titleInput.value = sharedNote.title || "Untitled Shared Note";
         contentInput.value = sharedNote.content || "";
-        
-        titleInput.readOnly = true;
-        contentInput.readOnly = true;
+        titleInput.readOnly = true; contentInput.readOnly = true;
         
         sharedBanner.style.display = "flex";
         shareBtn.style.display = "none";
         deleteButton.style.display = "none";
-        
         showStatus("Viewing shared note");
       } else {
         showStatus("Shared note not found or unshared");
         closeSharedView();
       }
     } catch (e) {
-      console.error("Error loading shared note:", e);
-      showStatus("Failed to load shared note");
+      console.error(e); showStatus("Failed to load shared note");
     }
   }
 
   function closeSharedView() {
     isViewingShared = false;
-    titleInput.readOnly = false;
-    contentInput.readOnly = false;
+    titleInput.readOnly = false; contentInput.readOnly = false;
     sharedBanner.style.display = "none";
-    shareBtn.style.display = "flex";
-    deleteButton.style.display = "flex";
+    shareBtn.style.display = "flex"; deleteButton.style.display = "flex";
     setShareURL(null);
-    
-    if (userId && currentNoteId && notes[currentNoteId]) {
-      openNote(currentNoteId);
-    } else {
-      showEmpty();
-    }
+    if (userId && currentNoteId && notes[currentNoteId]) openNote(currentNoteId);
+    else showEmpty();
   }
 
-  // Context menu share click
-  ctxShare.addEventListener("click", () => {
-    hideContextMenu();
-    openShareDialog(targetContextNoteId);
-  });
-
-  // Monitor Auth State and Sync Firestore
   onAuthStateChanged(auth, (user) => {
     const shareId = getShareIdFromURL();
 
@@ -1082,37 +961,24 @@
       userId = user.uid;
       authScreen.style.display = 'none';
       
+      if (unsubNotes) unsubNotes();
       const notesRef = collection(db, 'artifacts', appId, 'users', userId, 'notes');
-      
       unsubNotes = onSnapshot(notesRef, (snapshot) => {
         const cloudNotes = {};
-        snapshot.forEach(docSnap => {
-          cloudNotes[docSnap.id] = docSnap.data();
-        });
+        snapshot.forEach(docSnap => { cloudNotes[docSnap.id] = docSnap.data(); });
+        notes = cloudNotes; renderNotes();
         
-        notes = cloudNotes;
-        renderNotes();
-        
-        if (shareId) {
-          loadSharedNote(shareId);
-        } else if (currentNoteId && notes[currentNoteId]) {
-          openNote(currentNoteId);
-        } else {
-          showEmpty();
+        if (shareId && !isViewingShared) loadSharedNote(shareId);
+        else if (!isViewingShared) {
+          if (currentNoteId && notes[currentNoteId]) openNote(currentNoteId);
+          else showEmpty();
         }
-      }, (error) => {
-        console.error("Firestore sync error:", error);
-        showStatus("Error syncing cloud notes");
-      });
+      }, (error) => { console.error(error); showStatus("Error syncing cloud notes"); });
 
     } else {
       userId = null;
-      if (unsubNotes) {
-        unsubNotes();
-        unsubNotes = null;
-      }
-      notes = {};
-      renderNotes();
+      if (unsubNotes) { unsubNotes(); unsubNotes = null; }
+      notes = {}; renderNotes();
       
       if (shareId) {
         authScreen.style.display = 'none';
@@ -1124,87 +990,82 @@
     }
   });
 
-  ctxCopyLink.addEventListener('click', () => {
-    hideContextMenu();
-    copySpecificNoteURL(targetContextNoteId);
-  });
-
-  ctxDelete.addEventListener('click', () => {
-    hideContextMenu();
-    openDeleteDialog(targetContextNoteId);
-  });
-
-  function generateNoteId() {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+  function showContextMenu(x, y, id) {
+    targetContextNoteId = id;
+    contextMenu.style.display = 'block';
+    
+    const mw = contextMenu.offsetWidth || 200;
+    const mh = contextMenu.offsetHeight || 200;
+    let left = x, top = y;
+    if (left + mw > window.innerWidth) left = window.innerWidth - mw - 10;
+    if (top + mh > window.innerHeight) top = window.innerHeight - mh - 10;
+    
+    contextMenu.style.left = `${left}px`;
+    contextMenu.style.top = `${top}px`;
+    setTimeout(() => contextMenu.classList.add('show'), 10);
   }
+
+  function hideContextMenu() {
+    contextMenu.classList.remove('show');
+    setTimeout(() => contextMenu.style.display = 'none', 150);
+  }
+
+  document.addEventListener('click', (e) => { if (!contextMenu.contains(e.target)) hideContextMenu(); });
+
+  ctxShare.addEventListener("click", () => { hideContextMenu(); openShareDialog(targetContextNoteId); });
+  ctxCopyLink.addEventListener('click', () => { hideContextMenu(); copySpecificNoteURL(targetContextNoteId); });
+  ctxDelete.addEventListener('click', () => { hideContextMenu(); openDeleteDialog(targetContextNoteId); });
+  ctxDuplicate.addEventListener('click', () => { 
+    hideContextMenu(); 
+    if(notes[targetContextNoteId]) duplicateNote(targetContextNoteId); 
+  });
+
+  function generateNoteId() { return Date.now().toString(36) + Math.random().toString(36).substring(2, 8); }
 
   async function createNote() {
     if (!userId) return;
     const id = generateNoteId();
     const newNote = { id, title: "", content: "", created: Date.now(), updated: Date.now() };
-    
-    // Optimistic update
-    notes[id] = newNote;
-    openNote(id);
-    renderNotes();
-    titleInput.focus();
+    notes[id] = newNote; openNote(id); renderNotes(); titleInput.focus();
+    try { await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', id), newNote); } 
+    catch (e) { showStatus("Error creating note"); }
+  }
 
-    // Cloud commit
-    try {
-      await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', id), newNote);
-    } catch (e) {
-      console.error(e); showStatus("Error creating note");
-    }
+  async function duplicateNote(id) {
+    if (!userId || !notes[id]) return;
+    const original = notes[id];
+    const newId = generateNoteId();
+    const newNote = { 
+      id: newId, title: original.title ? `${original.title} (Copy)` : "Untitled (Copy)", 
+      content: original.content, created: Date.now(), updated: Date.now() 
+    };
+    notes[newId] = newNote; openNote(newId); renderNotes();
+    try { await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', newId), newNote); } 
+    catch (e) { showStatus("Error duplicating note"); }
   }
 
   function openNote(id) {
     if (isViewingShared) closeSharedView();
     if (!notes[id]) return showEmpty();
-    currentNoteId = id;
-    const note = notes[id];
+    currentNoteId = id; const note = notes[id];
     
-    titleInput.readOnly = false;
-    contentInput.readOnly = false;
-
+    titleInput.readOnly = false; contentInput.readOnly = false;
     if (document.activeElement !== titleInput) titleInput.value = note.title;
     if (document.activeElement !== contentInput) contentInput.value = note.content;
     
-    emptyState.style.display = "none";
-    noteEditor.style.display = "flex";
-    setNoteURL(id);
-    
+    emptyState.style.display = "none"; noteEditor.style.display = "flex"; setNoteURL(id);
     updateShareBtnState(note.isShared);
-
-    document.querySelectorAll('.note-item').forEach(item => {
-      item.classList.toggle('active', item.dataset.id === id);
-    });
-  }
-
-  function updateShareBtnState(isShared) {
-    if (isShared) {
-      shareBtn.classList.add('shared');
-      shareIcon.textContent = 'public';
-      shareBtn.title = 'Shared Note (Click to manage)';
-    } else {
-      shareBtn.classList.remove('shared');
-      shareIcon.textContent = 'share';
-      shareBtn.title = 'Share note';
-    }
+    document.querySelectorAll('.note-item').forEach(item => { item.classList.toggle('active', item.dataset.id === id); });
   }
 
   function showEmpty() {
-    currentNoteId = null;
-    emptyState.style.display = "flex";
-    noteEditor.style.display = "none";
-    document.querySelectorAll('.note-item').forEach(i => i.classList.remove('active'));
-    setNoteURL(null);
+    currentNoteId = null; emptyState.style.display = "flex"; noteEditor.style.display = "none";
+    document.querySelectorAll('.note-item').forEach(i => i.classList.remove('active')); setNoteURL(null);
   }
 
   let cloudSaveTimeout;
   function updateCurrentNote() {
-    if (isViewingShared) return;
-    if (!userId || !currentNoteId || !notes[currentNoteId]) return;
-    
+    if (isViewingShared || !userId || !currentNoteId || !notes[currentNoteId]) return;
     notes[currentNoteId].title = titleInput.value;
     notes[currentNoteId].content = contentInput.value;
     notes[currentNoteId].updated = Date.now();
@@ -1214,63 +1075,21 @@
     cloudSaveTimeout = setTimeout(async () => {
       try {
         await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', currentNoteId), notes[currentNoteId]);
-        
-        // Live sync shared document if note is shared
         if (notes[currentNoteId].isShared) {
           await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sharedNotes', currentNoteId), {
-            id: currentNoteId,
-            title: notes[currentNoteId].title || "Untitled Note",
-            content: notes[currentNoteId].content || "",
-            ownerId: userId,
-            updatedAt: Date.now()
+            id: currentNoteId, title: notes[currentNoteId].title || "Untitled Note",
+            content: notes[currentNoteId].content || "", ownerId: userId, updatedAt: Date.now()
           });
         }
-
         showStatus("Saved to cloud");
-      } catch (e) {
-        console.error(e);
-        showStatus("Error saving to cloud");
-      }
+      } catch (e) { showStatus("Error saving to cloud"); }
     }, 1000);
   }
 
-  function showEmpty() {
-    currentNoteId = null;
-    emptyState.style.display = "flex";
-    noteEditor.style.display = "none";
-    document.querySelectorAll('.note-item').forEach(i => i.classList.remove('active'));
-    setNoteURL(null);
-  }
-
-  let cloudSaveTimeout;
-  function updateCurrentNote() {
-    if (!userId || !currentNoteId || !notes[currentNoteId]) return;
-    
-    // Optimistic update
-    notes[currentNoteId].title = titleInput.value;
-    notes[currentNoteId].content = contentInput.value;
-    notes[currentNoteId].updated = Date.now();
-    renderNotes();
-    
-    // Debounce cloud commits to prevent excessive writes
-    clearTimeout(cloudSaveTimeout);
-    cloudSaveTimeout = setTimeout(async () => {
-      try {
-        await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', currentNoteId), notes[currentNoteId]);
-        showStatus("Saved to cloud");
-      } catch (e) {
-        console.error(e);
-        showStatus("Error saving to cloud");
-      }
-    }, 1000); // 1 second debounce
-  }
-
   let noteToDelete = null;
-
   function openDeleteDialog(id) {
     if (!id || !notes[id]) return;
-    noteToDelete = id;
-    deleteDialog.showModal();
+    noteToDelete = id; deleteDialog.showModal();
   }
 
   deleteButton.addEventListener("click", () => openDeleteDialog(currentNoteId));
@@ -1280,153 +1099,93 @@
     deleteDialog.close();
   });
 
-  deleteDialog.addEventListener("click", (e) => {
-    const rect = deleteDialog.getBoundingClientRect();
-    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
-      deleteDialog.close();
-    }
-  });
-
   async function deleteSpecificNote(id) {
     if (!userId) return;
-    
     const wasShared = notes[id]?.isShared;
-    delete notes[id];
-    renderNotes();
+    delete notes[id]; renderNotes();
     if (currentNoteId === id) {
       const remainingIds = Object.keys(notes);
-      if (remainingIds.length > 0) openNote(remainingIds[0]);
-      else showEmpty();
+      if (remainingIds.length > 0) openNote(remainingIds[0]); else showEmpty();
     }
     noteToDelete = null;
-
     try {
       await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', id));
-      if (wasShared) {
-        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sharedNotes', id));
-      }
+      if (wasShared) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sharedNotes', id));
       showStatus("Note deleted");
-    } catch(e) {
-      console.error(e); showStatus("Error deleting note");
+    } catch(e) { showStatus("Error deleting note"); }
+  }
+
+  function updateShareBtnState(isShared) {
+    if (isShared) {
+      shareBtn.classList.add('shared'); shareIcon.textContent = 'public'; shareBtn.title = 'Shared Note (Click to manage)';
+    } else {
+      shareBtn.classList.remove('shared'); shareIcon.textContent = 'share'; shareBtn.title = 'Share note';
     }
   }
 
   async function toggleNoteShare(id) {
     if (!userId || !id || !notes[id]) return;
-    const note = notes[id];
-    
-    if (note.isShared) {
-      await unshareNote(id);
-    } else {
-      await shareNote(id);
-    }
+    if (notes[id].isShared) await unshareNote(id); else await shareNote(id);
   }
 
   async function shareNote(id) {
-    if (!userId || !id || !notes[id]) return;
     const note = notes[id];
-    
     try {
       showStatus("Sharing note...");
-      // 1. Write to public shared notes
-      const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'sharedNotes', id);
-      await setDoc(publicRef, {
-        id: id,
-        title: note.title || "Untitled Note",
-        content: note.content || "",
-        ownerId: userId,
-        updatedAt: Date.now()
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sharedNotes', id), {
+        id: id, title: note.title || "Untitled Note", content: note.content || "", ownerId: userId, updatedAt: Date.now()
       });
-
-      // 2. Update private note status
-      note.isShared = true;
-      notes[id] = note;
+      note.isShared = true; notes[id] = note;
       await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', id), note);
-      
-      updateShareBtnState(true);
-      renderNotes();
-      updateShareDialogUI(id);
-      
-      copyShareUrl(id);
+      updateShareBtnState(true); renderNotes(); updateShareDialogUI(id); copyShareUrl(id);
       showStatus("Link copied & note shared!");
-    } catch (e) {
-      console.error("Error sharing note:", e);
-      showStatus("Failed to share note");
-    }
+    } catch (e) { showStatus("Failed to share note"); }
   }
 
   async function unshareNote(id) {
-    if (!userId || !id || !notes[id]) return;
     const note = notes[id];
-    
     try {
       showStatus("Unsharing note...");
-      // 1. Remove from public shared notes
-      const publicRef = doc(db, 'artifacts', appId, 'public', 'data', 'sharedNotes', id);
-      await deleteDoc(publicRef);
-
-      // 2. Update private note status
-      note.isShared = false;
-      notes[id] = note;
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'sharedNotes', id));
+      note.isShared = false; notes[id] = note;
       await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', id), note);
-      
-      updateShareBtnState(false);
-      renderNotes();
-      updateShareDialogUI(id);
+      updateShareBtnState(false); renderNotes(); updateShareDialogUI(id);
       showStatus("Note unshared");
-    } catch (e) {
-      console.error("Error unsharing note:", e);
-      showStatus("Failed to unshare note");
-    }
+    } catch (e) { showStatus("Failed to unshare note"); }
   }
 
   function getShareUrl(id) {
     const url = new URL(window.location.href);
-    url.searchParams.set("share", id);
-    url.searchParams.delete("note");
+    url.searchParams.set("share", id); url.searchParams.delete("note");
     return url.toString();
   }
 
   async function copyShareUrl(id) {
     const urlStr = getShareUrl(id);
-    try {
-      await navigator.clipboard.writeText(urlStr);
-    } catch (e) {
-      const input = document.createElement("input");
-      input.value = urlStr;
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      input.remove();
+    try { await navigator.clipboard.writeText(urlStr); } 
+    catch (e) {
+      const input = document.createElement("input"); input.value = urlStr;
+      document.body.appendChild(input); input.select(); document.execCommand("copy"); input.remove();
     }
   }
 
   function openShareDialog(id) {
     if (!id || !notes[id]) return;
-    targetContextNoteId = id;
-    updateShareDialogUI(id);
-    shareDialog.showModal();
+    targetContextNoteId = id; updateShareDialogUI(id); shareDialog.showModal();
   }
 
   function updateShareDialogUI(id) {
     const note = notes[id];
     if (!note) return;
-    
-    const urlStr = getShareUrl(id);
-    shareUrlInput.value = urlStr;
-
+    shareUrlInput.value = getShareUrl(id);
     if (note.isShared) {
-      shareStatusIcon.textContent = "public";
-      shareStatusIcon.style.color = "var(--md-sys-color-primary)";
+      shareStatusIcon.textContent = "public"; shareStatusIcon.style.color = "var(--md-sys-color-primary)";
       shareStatusText.textContent = "This note is public and accessible via link.";
-      toggleShareBtn.textContent = "Unshare Note";
-      toggleShareBtn.className = "text-btn error ripple-effect";
+      toggleShareBtn.textContent = "Unshare Note"; toggleShareBtn.className = "text-btn error ripple-effect";
     } else {
-      shareStatusIcon.textContent = "public_off";
-      shareStatusIcon.style.color = "var(--md-sys-color-outline)";
+      shareStatusIcon.textContent = "public_off"; shareStatusIcon.style.color = "var(--md-sys-color-outline)";
       shareStatusText.textContent = "This note is currently private.";
-      toggleShareBtn.textContent = "Share Note";
-      toggleShareBtn.className = "text-btn ripple-effect";
+      toggleShareBtn.textContent = "Share Note"; toggleShareBtn.className = "text-btn ripple-effect";
       toggleShareBtn.style.color = "var(--md-sys-color-primary)";
     }
   }
@@ -1434,123 +1193,73 @@
   function renderNotes() {
     notesList.innerHTML = "";
     const noteArray = Object.values(notes).sort((a, b) => b.updated - a.updated);
-
     for (const note of noteArray) {
       const item = document.createElement("div");
-      item.className = "note-item ripple-effect"; 
-      item.dataset.id = note.id;
+      item.className = "note-item ripple-effect"; item.dataset.id = note.id;
       if (note.id === currentNoteId) item.classList.add("active");
 
       const title = document.createElement("div");
-      title.className = "note-title";
-      title.style.display = "flex";
-      title.style.alignItems = "center";
-      title.style.justifyContent = "space-between";
+      title.className = "note-title"; title.style.display = "flex"; title.style.alignItems = "center"; title.style.justifyContent = "space-between";
 
       const titleText = document.createElement("span");
-      titleText.textContent = note.title || "Untitled Note";
-      titleText.style.overflow = "hidden";
-      titleText.style.textOverflow = "ellipsis";
+      titleText.textContent = note.title || "Untitled Note"; titleText.style.overflow = "hidden"; titleText.style.textOverflow = "ellipsis";
       title.appendChild(titleText);
 
       if (note.isShared) {
         const shareBadge = document.createElement("span");
-        shareBadge.className = "material-symbols-outlined";
-        shareBadge.style.fontSize = "16px";
-        shareBadge.style.opacity = "0.7";
-        shareBadge.textContent = "public";
-        shareBadge.title = "Shared Note";
+        shareBadge.className = "material-symbols-outlined"; shareBadge.style.fontSize = "16px"; shareBadge.style.opacity = "0.7";
+        shareBadge.textContent = "public"; shareBadge.title = "Shared Note";
         title.appendChild(shareBadge);
       }
 
       const preview = document.createElement("div");
-      preview.className = "note-preview";
-      preview.textContent = note.content ? note.content.replace(/\s+/g, " ").trim() : "No additional text";
+      preview.className = "note-preview"; preview.textContent = note.content ? note.content.replace(/\s+/g, " ").trim() : "No additional text";
 
-      item.appendChild(title);
-      item.appendChild(preview);
-
-      // Interactions
+      item.appendChild(title); item.appendChild(preview);
       item.addEventListener("click", () => openNote(note.id));
-      item.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        showContextMenu(e.pageX, e.pageY, note.id);
-      });
+      item.addEventListener('contextmenu', (e) => { e.preventDefault(); showContextMenu(e.pageX, e.pageY, note.id); });
 
       let touchTimer;
       item.addEventListener('touchstart', (e) => {
         hideContextMenu();
-        touchTimer = setTimeout(() => {
-          const touch = e.touches[0];
-          showContextMenu(touch.pageX, touch.pageY, note.id);
-          if(navigator.vibrate) navigator.vibrate(50);
-        }, 500);
+        touchTimer = setTimeout(() => { showContextMenu(e.touches[0].pageX, e.touches[0].pageY, note.id); if(navigator.vibrate) navigator.vibrate(50); }, 500);
       }, {passive: true});
       item.addEventListener('touchend', () => clearTimeout(touchTimer));
       item.addEventListener('touchmove', () => clearTimeout(touchTimer));
-
       notesList.appendChild(item);
     }
   }
 
   async function copySpecificNoteURL(id) {
     if (!id) return;
-    const urlObj = new URL(window.location.href);
-    urlObj.searchParams.set("note", id);
+    const urlObj = new URL(window.location.href); urlObj.searchParams.set("note", id);
     try {
-      await navigator.clipboard.writeText(urlObj.toString());
-      showStatus("Link copied to clipboard");
+      await navigator.clipboard.writeText(urlObj.toString()); showStatus("Link copied to clipboard");
     } catch (e) {
-      const input = document.createElement("input");
-      input.value = urlObj.toString();
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      input.remove();
-      showStatus("Link copied to clipboard");
+      const input = document.createElement("input"); input.value = urlObj.toString(); document.body.appendChild(input);
+      input.select(); document.execCommand("copy"); input.remove(); showStatus("Link copied to clipboard");
     }
   }
-
-  copyButton.addEventListener("click", () => copySpecificNoteURL(currentNoteId));
 
   let statusTimeout;
   function showStatus(message) {
-    statusText.textContent = message;
-    status.classList.add("show");
-    clearTimeout(statusTimeout);
-    statusTimeout = setTimeout(() => status.classList.remove("show"), 3000); 
+    statusText.textContent = message; status.classList.add("show");
+    clearTimeout(statusTimeout); statusTimeout = setTimeout(() => status.classList.remove("show"), 3000); 
   }
 
-  newNoteButton.addEventListener("click", createNote);
-  titleInput.addEventListener("input", updateCurrentNote);
-  contentInput.addEventListener("input", updateCurrentNote);
-
-  window.addEventListener("popstate", () => {
-    initTheme(); 
-    const id = getNoteIdFromURL();
-    if (id && notes[id]) openNote(id);
-    else showEmpty();
+  [deleteDialog, shareDialog].forEach(dialog => {
+    dialog.addEventListener("click", (e) => {
+      const rect = dialog.getBoundingClientRect();
+      if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) dialog.close();
+    });
   });
 
-</script>
-</body>
-</html>
+  copyButton.addEventListener("click", () => copySpecificNoteURL(currentNoteId));
   shareBtn.addEventListener("click", () => openShareDialog(currentNoteId));
-  copyShareUrlBtn.addEventListener("click", () => {
-    copyShareUrl(targetContextNoteId);
-    showStatus("Share link copied!");
-  });
+  copyShareUrlBtn.addEventListener("click", () => { copyShareUrl(targetContextNoteId); showStatus("Share link copied!"); });
   toggleShareBtn.addEventListener("click", () => toggleNoteShare(targetContextNoteId));
   closeShareBtn.addEventListener("click", () => shareDialog.close());
   closeSharedBtn.addEventListener("click", () => closeSharedView());
-
-  shareDialog.addEventListener("click", (e) => {
-    const rect = shareDialog.getBoundingClientRect();
-    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
-      shareDialog.close();
-    }
-  });
-
   newNoteButton.addEventListener("click", createNote);
   titleInput.addEventListener("input", updateCurrentNote);
   contentInput.addEventListener("input", updateCurrentNote);
@@ -1563,7 +1272,6 @@
     else if (id && notes[id]) openNote(id);
     else showEmpty();
   });
-
 </script>
 </body>
 </html>
