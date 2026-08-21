@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Local Notes</title>
+  <title>Cloud Notes</title>
 
   <!-- Google Fonts & Material Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -140,6 +140,11 @@
       gap: 12px;
       color: var(--md-sys-color-on-surface);
     }
+    
+    .sidebar-actions {
+      display: flex;
+      gap: 4px;
+    }
 
     .new-note {
       align-self: flex-start;
@@ -155,6 +160,8 @@
       align-items: center;
       gap: 8px;
       transition: background 0.2s ease, box-shadow 0.2s ease, color 0.3s;
+      width: 100%;
+      justify-content: center;
     }
 
     .new-note:hover {
@@ -432,6 +439,147 @@
     .text-btn.error { color: var(--md-sys-color-error); }
     .text-btn:hover { background: var(--hover-bg); }
 
+    /* Auth Overlay */
+    .auth-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--md-sys-color-surface);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      padding: 16px;
+    }
+    
+    .auth-card {
+      background: var(--md-sys-color-surface-container);
+      padding: 32px;
+      border-radius: 28px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .auth-card h2 {
+      margin: 0;
+      font-family: 'Product Sans', sans-serif;
+      font-weight: 500;
+      font-size: 28px;
+      color: var(--md-sys-color-on-surface);
+      text-align: center;
+    }
+    
+    .auth-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      background: var(--md-sys-color-surface-container-highest);
+      padding: 4px;
+      border-radius: 12px;
+    }
+    
+    .auth-tab {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      color: var(--md-sys-color-on-surface-variant);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .auth-tab.active {
+      background: var(--md-sys-color-surface);
+      color: var(--md-sys-color-on-surface);
+      box-shadow: 0 1px 3px var(--shadow-color);
+    }
+    
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .auth-input {
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--md-sys-color-outline);
+      background: transparent;
+      color: var(--md-sys-color-on-surface);
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    .auth-input:focus {
+      border-color: var(--md-sys-color-primary);
+      border-width: 2px;
+      padding: 15px; /* offset border width */
+    }
+    
+    .auth-btn-submit {
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary-container);
+      border: none;
+      padding: 16px;
+      border-radius: 100px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    
+    .auth-btn-submit:hover { opacity: 0.9; }
+    .auth-btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .auth-divider {
+      text-align: center;
+      color: var(--md-sys-color-on-surface-variant);
+      position: relative;
+      font-size: 14px;
+    }
+    .auth-divider::before, .auth-divider::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 40%;
+      height: 1px;
+      background: var(--md-sys-color-outline);
+      opacity: 0.3;
+    }
+    .auth-divider::before { left: 0; }
+    .auth-divider::after { right: 0; }
+    
+    .auth-btn-google {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: var(--md-sys-color-surface-container-high);
+      color: var(--md-sys-color-on-surface);
+      border: 1px solid var(--md-sys-color-outline);
+      padding: 14px;
+      border-radius: 100px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .auth-btn-google:hover { background: var(--md-sys-color-surface-container-highest); }
+    
+    .auth-error {
+      color: var(--md-sys-color-error);
+      font-size: 14px;
+      text-align: center;
+      min-height: 20px;
+    }
+
     @media (max-width: 700px) {
       .app { flex-direction: column; }
       .sidebar { width: 100%; height: 35%; }
@@ -444,18 +592,55 @@
 
 <body>
 
-<div class="app">
+<!-- Authentication Overlay -->
+<div id="authScreen" class="auth-overlay">
+  <div class="auth-card">
+    <h2>Cloud Notes</h2>
+    
+    <div class="auth-tabs">
+      <button id="tabLogin" class="auth-tab active ripple-effect">Login</button>
+      <button id="tabSignup" class="auth-tab ripple-effect">Sign Up</button>
+    </div>
+    
+    <form id="authForm" class="auth-form">
+      <input type="email" id="authEmail" class="auth-input" placeholder="Email" required autocomplete="username">
+      <input type="password" id="authPassword" class="auth-input" placeholder="Password" required autocomplete="current-password">
+      <button type="submit" id="authSubmitBtn" class="auth-btn-submit ripple-effect">Login</button>
+    </form>
+    
+    <div id="authErrorMsg" class="auth-error"></div>
+    
+    <div class="auth-divider">or</div>
+    
+    <button id="btnGoogleSignIn" class="auth-btn-google ripple-effect">
+      <svg width="20" height="20" viewBox="0 0 48 48">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.73 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        <path fill="none" d="M0 0h48v48H0z"/>
+      </svg>
+      Sign in with Google
+    </button>
+  </div>
+</div>
 
+<div class="app">
   <aside class="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-top">
         <h1>
-          <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">description</span>
+          <span class="material-symbols-outlined" style="color: var(--md-sys-color-primary);">cloud_sync</span>
           Notes
         </h1>
-        <button class="icon-btn ripple-effect" id="themeToggleBtn" title="Toggle Theme">
-          <span class="material-symbols-outlined" id="themeIcon">light_mode</span>
-        </button>
+        <div class="sidebar-actions">
+          <button class="icon-btn ripple-effect" id="themeToggleBtn" title="Toggle Theme">
+            <span class="material-symbols-outlined" id="themeIcon">light_mode</span>
+          </button>
+          <button class="icon-btn ripple-effect" id="logoutBtn" title="Sign Out">
+            <span class="material-symbols-outlined">logout</span>
+          </button>
+        </div>
       </div>
       <button class="new-note ripple-effect" id="newNoteButton">
         <span class="material-symbols-outlined">add</span>
@@ -511,7 +696,7 @@
 <dialog id="deleteDialog" class="md-dialog">
   <div class="md-dialog-content">
     <h3 class="md-dialog-title">Delete note?</h3>
-    <p class="md-dialog-desc">This note will be permanently deleted. This action cannot be undone.</p>
+    <p class="md-dialog-desc">This note will be permanently deleted from the cloud. This action cannot be undone.</p>
   </div>
   <div class="md-dialog-actions">
     <button id="cancelDeleteBtn" class="text-btn ripple-effect">Cancel</button>
@@ -519,87 +704,117 @@
   </div>
 </dialog>
 
-<script>
-  /* ------------------------- Theme Management ------------------------- */
-  const html = document.documentElement;
-  const themeToggleBtn = document.getElementById('themeToggleBtn');
-  const themeIcon = document.getElementById('themeIcon');
-  
-  function initTheme() {
-    const params = new URLSearchParams(window.location.search);
-    let theme = params.get('theme');
-    
-    if (!theme) {
-      theme = localStorage.getItem('theme');
-    }
-    if (!theme) {
-      theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    
-    setTheme(theme, true);
-  }
+<script type="module">
+  // Firebase SDKs
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { 
+    getAuth, 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    GoogleAuthProvider, 
+    signInWithPopup, 
+    onAuthStateChanged, 
+    signOut 
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import { 
+    getFirestore, 
+    collection, 
+    doc, 
+    setDoc, 
+    deleteDoc, 
+    onSnapshot 
+  } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  function setTheme(theme, replaceUrl = false) {
-    html.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-    themeIcon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
-    
-    // Update URL helper without reloading
-    const url = new URL(window.location.href);
-    url.searchParams.set('theme', theme);
-    if (replaceUrl) {
-      history.replaceState({}, "", url);
+  // App ID resolution
+  const appId = typeof __app_id !== 'undefined' ? __app_id : 'localnotes-a7de4';
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDZBJVcgOOUu6dGt42OxA4R2fziaJxeQRU",
+    authDomain: "localnotes-a7de4.firebaseapp.com",
+    projectId: "localnotes-a7de4",
+    storageBucket: "localnotes-a7de4.firebasestorage.app",
+    messagingSenderId: "953154508395",
+    appId: "1:953154508395:web:c3310e17f49da452fc032e",
+    measurementId: "G-55D8SQS89H"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let userId = null;
+  let notes = {};
+  let currentNoteId = getNoteIdFromURL();
+  let unsubNotes = null;
+
+  // DOM Elements for Auth
+  const authScreen = document.getElementById('authScreen');
+  const tabLogin = document.getElementById('tabLogin');
+  const tabSignup = document.getElementById('tabSignup');
+  const authForm = document.getElementById('authForm');
+  const authEmail = document.getElementById('authEmail');
+  const authPassword = document.getElementById('authPassword');
+  const authSubmitBtn = document.getElementById('authSubmitBtn');
+  const authErrorMsg = document.getElementById('authErrorMsg');
+  const btnGoogleSignIn = document.getElementById('btnGoogleSignIn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  let isLoginMode = true;
+
+  // Toggle Login/Signup Modes
+  function setAuthMode(login) {
+    isLoginMode = login;
+    if (login) {
+      tabLogin.classList.add('active');
+      tabSignup.classList.remove('active');
+      authSubmitBtn.textContent = 'Login';
     } else {
-      history.pushState({}, "", url);
+      tabSignup.classList.add('active');
+      tabLogin.classList.remove('active');
+      authSubmitBtn.textContent = 'Sign Up';
     }
+    authErrorMsg.textContent = '';
   }
 
-  themeToggleBtn.addEventListener('click', () => {
-    const current = html.getAttribute('data-theme');
-    setTheme(current === 'dark' ? 'light' : 'dark');
+  tabLogin.addEventListener('click', () => setAuthMode(true));
+  tabSignup.addEventListener('click', () => setAuthMode(false));
+
+  // Handle Form Submit (Email/Password)
+  authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = authEmail.value;
+    const password = authPassword.value;
+    authErrorMsg.textContent = '';
+    authSubmitBtn.disabled = true;
+
+    try {
+      if (isLoginMode) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+      }
+    } catch (error) {
+      authErrorMsg.textContent = error.message.replace('Firebase: ', '');
+    } finally {
+      authSubmitBtn.disabled = false;
+    }
   });
 
-  initTheme();
-
-  /* ------------------------- Advanced Ripple Effect ------------------------- */
-  document.addEventListener('pointerdown', function(e) {
-    const target = e.target.closest('.ripple-effect');
-    if (!target) return;
-    
-    const rect = target.getBoundingClientRect();
-    const diameter = Math.max(rect.width, rect.height); 
-    const radius = diameter / 2;
-    
-    const circle = document.createElement('span');
-    circle.classList.add('ripple-span');
-    circle.style.width = circle.style.height = `${diameter}px`;
-    circle.style.left = `${e.clientX - rect.left - radius}px`;
-    circle.style.top = `${e.clientY - rect.top - radius}px`;
-    
-    target.appendChild(circle);
-    const startTime = Date.now();
-    
-    requestAnimationFrame(() => circle.classList.add('ripple-animate-in'));
-
-    const removeRipple = () => {
-      const timeElapsed = Date.now() - startTime;
-      const delay = Math.max(0, 450 - timeElapsed);
-      
-      setTimeout(() => {
-        circle.classList.add('ripple-animate-out');
-        setTimeout(() => circle.remove(), 300);
-      }, delay);
-      
-      window.removeEventListener('pointerup', removeRipple);
-      target.removeEventListener('pointerleave', removeRipple);
-    };
-
-    window.addEventListener('pointerup', removeRipple);
-    target.addEventListener('pointerleave', removeRipple);
+  // Handle Google Sign In
+  btnGoogleSignIn.addEventListener('click', async () => {
+    const provider = new GoogleAuthProvider();
+    authErrorMsg.textContent = '';
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      authErrorMsg.textContent = error.message.replace('Firebase: ', '');
+    }
   });
 
-  /* ------------------------- App State & Elements ------------------------- */
-  const STORAGE_KEY = "local-notes-app";
+  // Handle Sign Out
+  logoutBtn.addEventListener('click', () => signOut(auth));
 
   const notesList = document.getElementById("notesList");
   const newNoteButton = document.getElementById("newNoteButton");
@@ -624,22 +839,84 @@
   const ctxDelete = document.getElementById("ctxDelete");
   let targetContextNoteId = null;
 
-  let notes = loadNotes();
-  let currentNoteId = getNoteIdFromURL();
+  // Monitor Auth State and Sync Firestore
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      // Logged in
+      userId = user.uid;
+      authScreen.style.display = 'none';
+      
+      // Start listening to user's private cloud notes
+      const notesRef = collection(db, 'artifacts', appId, 'users', userId, 'notes');
+      
+      unsubNotes = onSnapshot(notesRef, (snapshot) => {
+        const cloudNotes = {};
+        snapshot.forEach(docSnap => {
+          cloudNotes[docSnap.id] = docSnap.data();
+        });
+        
+        notes = cloudNotes;
+        renderNotes();
+        
+        // Handle opened note resolution
+        if (currentNoteId && notes[currentNoteId]) {
+          // Note exists, sidebar active state updated via renderNotes()
+          // We do NOT strictly overwrite the inputs here if the user is actively typing,
+          // but for simplicity we rely on optimistic updates and assume 1 device writes at a time.
+        } else if (currentNoteId && !notes[currentNoteId]) {
+          showEmpty();
+        }
+      }, (error) => {
+        console.error("Firestore sync error:", error);
+        showStatus("Error syncing cloud notes");
+      });
 
-  /* ------------------------- LocalStorage ------------------------- */
-  function loadNotes() {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : {};
-    } catch (e) { return {}; }
+    } else {
+      // Logged out
+      userId = null;
+      authScreen.style.display = 'flex';
+      
+      // Clean up listeners and local state
+      if (unsubNotes) {
+        unsubNotes();
+        unsubNotes = null;
+      }
+      notes = {};
+      renderNotes();
+      showEmpty();
+    }
+  });
+
+
+  const html = document.documentElement;
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const themeIcon = document.getElementById('themeIcon');
+  
+  function initTheme() {
+    const params = new URLSearchParams(window.location.search);
+    let theme = params.get('theme');
+    if (!theme) theme = localStorage.getItem('theme');
+    if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    setTheme(theme, true);
   }
 
-  function saveNotes() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  function setTheme(theme, replaceUrl = false) {
+    html.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    themeIcon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+    const url = new URL(window.location.href);
+    url.searchParams.set('theme', theme);
+    if (replaceUrl) history.replaceState({}, "", url);
+    else history.pushState({}, "", url);
   }
 
-  /* ------------------------- URL handling ------------------------- */
+  themeToggleBtn.addEventListener('click', () => {
+    const current = html.getAttribute('data-theme');
+    setTheme(current === 'dark' ? 'light' : 'dark');
+  });
+
+  initTheme();
+
   function getNoteIdFromURL() {
     return new URLSearchParams(window.location.search).get("note");
   }
@@ -648,14 +925,45 @@
     const url = new URL(window.location.href);
     if (id) url.searchParams.set("note", id);
     else url.searchParams.delete("note");
-    history.replaceState({}, "", url); // Use replace to preserve theme param smoothly
+    history.replaceState({}, "", url); 
   }
 
-  /* ------------------------- Context Menu Logic ------------------------- */
+  document.addEventListener('pointerdown', function(e) {
+    const target = e.target.closest('.ripple-effect');
+    if (!target) return;
+    
+    const rect = target.getBoundingClientRect();
+    const diameter = Math.max(rect.width, rect.height); 
+    const radius = diameter / 2;
+    
+    const circle = document.createElement('span');
+    circle.classList.add('ripple-span');
+    circle.style.width = circle.style.height = `${diameter}px`;
+    circle.style.left = `${e.clientX - rect.left - radius}px`;
+    circle.style.top = `${e.clientY - rect.top - radius}px`;
+    
+    target.appendChild(circle);
+    const startTime = Date.now();
+    
+    requestAnimationFrame(() => circle.classList.add('ripple-animate-in'));
+
+    const removeRipple = () => {
+      const timeElapsed = Date.now() - startTime;
+      const delay = Math.max(0, 450 - timeElapsed);
+      setTimeout(() => {
+        circle.classList.add('ripple-animate-out');
+        setTimeout(() => circle.remove(), 300);
+      }, delay);
+      window.removeEventListener('pointerup', removeRipple);
+      target.removeEventListener('pointerleave', removeRipple);
+    };
+
+    window.addEventListener('pointerup', removeRipple);
+    target.addEventListener('pointerleave', removeRipple);
+  });
+
   function showContextMenu(x, y, noteId) {
     targetContextNoteId = noteId;
-    
-    // Boundary checks
     contextMenu.style.display = 'block';
     const menuWidth = contextMenu.offsetWidth;
     const menuHeight = contextMenu.offsetHeight;
@@ -667,8 +975,6 @@
     
     contextMenu.style.left = `${x}px`;
     contextMenu.style.top = `${y}px`;
-    
-    // Small delay to allow display:block to apply before animating opacity/scale
     requestAnimationFrame(() => contextMenu.classList.add('show'));
   }
 
@@ -683,23 +989,32 @@
     if (!contextMenu.contains(e.target)) hideContextMenu();
   });
   
-  // Context Actions
-  ctxDuplicate.addEventListener('click', () => {
-    if (!targetContextNoteId || !notes[targetContextNoteId]) return;
+  ctxDuplicate.addEventListener('click', async () => {
+    if (!userId || !targetContextNoteId || !notes[targetContextNoteId]) return;
     const og = notes[targetContextNoteId];
     const newId = generateNoteId();
-    notes[newId] = {
+    const duplicatedNote = {
       id: newId,
       title: og.title ? `${og.title} (Copy)` : "Untitled Note (Copy)",
       content: og.content,
       created: Date.now(),
       updated: Date.now()
     };
-    saveNotes();
+    
+    // Optimistic UI updates
+    notes[newId] = duplicatedNote;
     openNote(newId);
     renderNotes();
     hideContextMenu();
-    showStatus("Note duplicated");
+    
+    // Cloud commit
+    try {
+      await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', newId), duplicatedNote);
+      showStatus("Note duplicated");
+    } catch (e) {
+      console.error(e);
+      showStatus("Failed to duplicate note");
+    }
   });
 
   ctxCopyLink.addEventListener('click', () => {
@@ -712,18 +1027,27 @@
     openDeleteDialog(targetContextNoteId);
   });
 
-  /* ------------------------- Note Operations ------------------------- */
   function generateNoteId() {
     return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
   }
 
-  function createNote() {
+  async function createNote() {
+    if (!userId) return;
     const id = generateNoteId();
-    notes[id] = { id, title: "", content: "", created: Date.now(), updated: Date.now() };
-    saveNotes();
+    const newNote = { id, title: "", content: "", created: Date.now(), updated: Date.now() };
+    
+    // Optimistic update
+    notes[id] = newNote;
     openNote(id);
     renderNotes();
     titleInput.focus();
+
+    // Cloud commit
+    try {
+      await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', id), newNote);
+    } catch (e) {
+      console.error(e); showStatus("Error creating note");
+    }
   }
 
   function openNote(id) {
@@ -749,17 +1073,29 @@
     setNoteURL(null);
   }
 
+  let cloudSaveTimeout;
   function updateCurrentNote() {
-    if (!currentNoteId || !notes[currentNoteId]) return;
+    if (!userId || !currentNoteId || !notes[currentNoteId]) return;
+    
+    // Optimistic update
     notes[currentNoteId].title = titleInput.value;
     notes[currentNoteId].content = contentInput.value;
     notes[currentNoteId].updated = Date.now();
-    saveNotes();
     renderNotes();
-    showStatus("Saved");
+    
+    // Debounce cloud commits to prevent excessive writes
+    clearTimeout(cloudSaveTimeout);
+    cloudSaveTimeout = setTimeout(async () => {
+      try {
+        await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', currentNoteId), notes[currentNoteId]);
+        showStatus("Saved to cloud");
+      } catch (e) {
+        console.error(e);
+        showStatus("Error saving to cloud");
+      }
+    }, 1000); // 1 second debounce
   }
 
-  /* ------------------------- Deletion Logic ------------------------- */
   let noteToDelete = null;
 
   function openDeleteDialog(id) {
@@ -782,21 +1118,28 @@
     }
   });
 
-  function deleteSpecificNote(id) {
-    delete notes[id];
-    saveNotes();
-    renderNotes();
+  async function deleteSpecificNote(id) {
+    if (!userId) return;
     
+    // Optimistic update
+    delete notes[id];
+    renderNotes();
     if (currentNoteId === id) {
       const remainingIds = Object.keys(notes);
       if (remainingIds.length > 0) openNote(remainingIds[0]);
       else showEmpty();
     }
-    showStatus("Note deleted");
     noteToDelete = null;
+
+    // Cloud commit
+    try {
+      await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', id));
+      showStatus("Note deleted");
+    } catch(e) {
+      console.error(e); showStatus("Error deleting note");
+    }
   }
 
-  /* ------------------------- Render Sidebar ------------------------- */
   function renderNotes() {
     notesList.innerHTML = "";
     const noteArray = Object.values(notes).sort((a, b) => b.updated - a.updated);
@@ -818,28 +1161,22 @@
       item.appendChild(title);
       item.appendChild(preview);
 
-      // Standard Click
+      // Interactions
       item.addEventListener("click", () => openNote(note.id));
-
-      // PC Right Click
       item.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         showContextMenu(e.pageX, e.pageY, note.id);
       });
 
-      // Mobile Long Press Logic
       let touchTimer;
       item.addEventListener('touchstart', (e) => {
         hideContextMenu();
         touchTimer = setTimeout(() => {
-          // If held for 500ms, trigger context menu at touch coordinates
           const touch = e.touches[0];
           showContextMenu(touch.pageX, touch.pageY, note.id);
-          // Haptic feedback if supported
           if(navigator.vibrate) navigator.vibrate(50);
         }, 500);
       }, {passive: true});
-
       item.addEventListener('touchend', () => clearTimeout(touchTimer));
       item.addEventListener('touchmove', () => clearTimeout(touchTimer));
 
@@ -847,7 +1184,6 @@
     }
   }
 
-  /* ------------------------- Utility ------------------------- */
   async function copySpecificNoteURL(id) {
     if (!id) return;
     const urlObj = new URL(window.location.href);
@@ -876,25 +1212,17 @@
     statusTimeout = setTimeout(() => status.classList.remove("show"), 3000); 
   }
 
-  /* ------------------------- Event listeners ------------------------- */
   newNoteButton.addEventListener("click", createNote);
   titleInput.addEventListener("input", updateCurrentNote);
   contentInput.addEventListener("input", updateCurrentNote);
 
   window.addEventListener("popstate", () => {
-    initTheme(); // Also check theme on history navigation
+    initTheme(); 
     const id = getNoteIdFromURL();
     if (id && notes[id]) openNote(id);
     else showEmpty();
   });
 
-  /* ------------------------- Start app ------------------------- */
-  renderNotes();
-  if (currentNoteId && notes[currentNoteId]) openNote(currentNoteId);
-  else showEmpty();
-
 </script>
 </body>
 </html>
-
-
