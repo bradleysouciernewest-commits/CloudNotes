@@ -438,6 +438,14 @@
 
     .text-btn.error { color: var(--md-sys-color-error); }
     .text-btn:hover { background: var(--hover-bg); }
+    
+    /* Toggle Switch */
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--md-sys-color-surface-container-highest); transition: .4s; border-radius: 24px; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: var(--md-sys-color-outline); transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--md-sys-color-primary); }
+    input:checked + .slider:before { transform: translateX(20px); background-color: var(--md-sys-color-on-primary-container); }
 
     /* Auth Overlay */
     .auth-overlay {
@@ -660,8 +668,15 @@
     </div>
 
     <div id="noteEditor" style="display:none; height:100%; flex-direction:column;">
+      <div id="readOnlyBanner" style="display:none; background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); padding: 8px 24px; font-size: 14px; align-items: center; justify-content: space-between;">
+        <span style="font-weight: 500;">Viewing shared note (Read-only)</span>
+        <button id="bannerSignInBtn" class="text-btn" style="padding: 4px 12px; font-size: 13px;">Sign In to App</button>
+      </div>
       <div class="toolbar">
         <input id="titleInput" type="text" placeholder="Untitled note" autocomplete="off">
+        <button class="icon-btn ripple-effect" id="shareButton" title="Share note">
+          <span class="material-symbols-outlined">share</span>
+        </button>
         <button class="icon-btn ripple-effect" id="copyButton" title="Copy note URL">
           <span class="material-symbols-outlined">link</span>
         </button>
@@ -705,6 +720,30 @@
   </div>
 </dialog>
 
+<!-- Share Dialog -->
+<dialog id="shareDialog" class="md-dialog">
+  <div class="md-dialog-content">
+    <h3 class="md-dialog-title">Share Note</h3>
+    <p class="md-dialog-desc" style="margin-bottom: 16px;">Anyone with the link can view this note.</p>
+    
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+      <span style="font-size: 15px; font-weight: 500;">Public link access</span>
+      <label class="switch">
+        <input type="checkbox" id="shareToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+    
+    <div id="shareLinkContainer" style="display: none; flex-direction: column; gap: 12px;">
+      <input type="text" id="shareLinkInput" readonly style="width:100%; padding: 12px; border-radius: 8px; border: 1px solid var(--md-sys-color-outline); background: transparent; color: var(--md-sys-color-on-surface); font-size: 14px; outline: none;">
+      <button id="copyShareLinkBtn" class="text-btn ripple-effect" style="align-self: flex-end;">Copy Link</button>
+    </div>
+  </div>
+  <div class="md-dialog-actions" style="margin-top: 16px;">
+    <button id="closeShareBtn" class="text-btn ripple-effect">Close</button>
+  </div>
+</dialog>
+
 <script type="module">
   // Firebase SDKs
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -722,6 +761,8 @@
     collection, 
     doc, 
     setDoc, 
+    updateDoc,
+    getDoc,
     deleteDoc, 
     onSnapshot 
   } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -822,8 +863,11 @@
   const newNoteButton = document.getElementById("newNoteButton");
   const emptyState = document.getElementById("emptyState");
   const noteEditor = document.getElementById("noteEditor");
+  const readOnlyBanner = document.getElementById("readOnlyBanner");
+  const bannerSignInBtn = document.getElementById("bannerSignInBtn");
   const titleInput = document.getElementById("titleInput");
   const contentInput = document.getElementById("contentInput");
+  const shareButton = document.getElementById("shareButton");
   const deleteButton = document.getElementById("deleteButton");
   const copyButton = document.getElementById("copyButton");
   const status = document.getElementById("status");
@@ -834,6 +878,14 @@
   const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
   const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
 
+  // Share Dialog Elements
+  const shareDialog = document.getElementById("shareDialog");
+  const shareToggle = document.getElementById("shareToggle");
+  const shareLinkContainer = document.getElementById("shareLinkContainer");
+  const shareLinkInput = document.getElementById("shareLinkInput");
+  const copyShareLinkBtn = document.getElementById("copyShareLinkBtn");
+  const closeShareBtn = document.getElementById("closeShareBtn");
+
   // Context Menu Elements
   const contextMenu = document.getElementById("contextMenu");
   const ctxDuplicate = document.getElementById("ctxDuplicate");
@@ -841,11 +893,81 @@
   const ctxDelete = document.getElementById("ctxDelete");
   let targetContextNoteId = null;
 
+  // Handle Shared Note Links on Load
+  const shareParam = new URLSearchParams(window.location.search).get("share");
+  let isViewingShared = !!shareParam;
+
+  if (isViewingShared) {
+    loadSharedNote(shareParam);
+  }
+
+  bannerSignInBtn.addEventListener('click', () => {
+    window.location.href = window.location.pathname; // Clear params and reload
+  });
+
+  async function loadSharedNote(param) {
+    const parts = param.split('_');
+    if (parts.length !== 2) return handleShareError();
+    const [ownerId, noteId] = parts;
+    
+    try {
+      const docRef = doc(db, 'artifacts', appId, 'users', ownerId, 'notes', noteId);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists() && docSnap.data().isShared) {
+        displayReadOnlyNote(docSnap.data());
+      } else {
+        handleShareError();
+      }
+    } catch(e) {
+      console.error("Error loading shared note:", e);
+      handleShareError();
+    }
+  }
+
+  function handleShareError() {
+    alert("This note is unavailable or is no longer shared.");
+    window.location.href = window.location.pathname;
+  }
+
+  function displayReadOnlyNote(note) {
+    document.querySelector('.sidebar').style.display = 'none';
+    document.querySelector('.editor').style.margin = '0';
+    document.querySelector('.editor').style.borderRadius = '0';
+    
+    titleInput.value = note.title;
+    contentInput.value = note.content;
+    titleInput.readOnly = true;
+    contentInput.readOnly = true;
+    
+    shareButton.style.display = 'none';
+    copyButton.style.display = 'none';
+    deleteButton.style.display = 'none';
+    
+    readOnlyBanner.style.display = 'flex';
+    emptyState.style.display = 'none';
+    noteEditor.style.display = 'flex';
+    authScreen.style.display = 'none';
+  }
+
   // Monitor Auth State and Sync Firestore
   onAuthStateChanged(auth, (user) => {
     if (user) {
       // Logged in
       userId = user.uid;
+      
+      if (isViewingShared) {
+        const ownerId = shareParam.split('_')[0];
+        if (userId === ownerId) {
+          // User owns this shared note. Redirect to normal edit mode.
+          window.location.href = `?note=${shareParam.split('_')[1]}`;
+          return;
+        }
+        // Otherwise, they are logged in but viewing someone else's shared note
+        authScreen.style.display = 'none';
+        return; 
+      }
+      
       authScreen.style.display = 'none';
       isInitialLoad = true; // Reset initial load sequence for this user
       
@@ -886,7 +1008,10 @@
     } else {
       // Logged out
       userId = null;
-      authScreen.style.display = 'flex';
+      
+      if (!isViewingShared) {
+        authScreen.style.display = 'flex';
+      }
       
       // Clean up listeners and local state
       if (unsubNotes) {
@@ -1126,6 +1251,70 @@
     const rect = deleteDialog.getBoundingClientRect();
     if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
       deleteDialog.close();
+    }
+  });
+
+  // Share Logic
+  shareButton.addEventListener("click", () => {
+    if (!currentNoteId || !notes[currentNoteId]) return;
+    const note = notes[currentNoteId];
+    shareToggle.checked = !!note.isShared;
+    updateShareUI(note.isShared);
+    shareDialog.showModal();
+  });
+
+  function updateShareUI(isShared) {
+    if (isShared) {
+      shareLinkContainer.style.display = 'flex';
+      const url = new URL(window.location.href);
+      url.searchParams.delete('note');
+      url.searchParams.set('share', `${userId}_${currentNoteId}`);
+      shareLinkInput.value = url.toString();
+    } else {
+      shareLinkContainer.style.display = 'none';
+    }
+  }
+
+  shareToggle.addEventListener("change", async (e) => {
+    const isShared = e.target.checked;
+    updateShareUI(isShared);
+    if (!userId || !currentNoteId || !notes[currentNoteId]) return;
+    
+    notes[currentNoteId].isShared = isShared;
+    notes[currentNoteId].updated = Date.now();
+    
+    try {
+      await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'notes', currentNoteId), {
+        isShared: isShared,
+        updated: Date.now()
+      });
+      showStatus(isShared ? "Link access turned on" : "Link access turned off");
+    } catch(err) {
+      console.error(err);
+      showStatus("Error updating share status");
+      shareToggle.checked = !isShared;
+      updateShareUI(!isShared);
+      notes[currentNoteId].isShared = !isShared;
+    }
+  });
+
+  copyShareLinkBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(shareLinkInput.value);
+      showStatus("Share link copied to clipboard");
+    } catch (e) {
+      shareLinkInput.select();
+      document.execCommand("copy");
+      showStatus("Share link copied to clipboard");
+    }
+  });
+
+  closeShareBtn.addEventListener("click", () => shareDialog.close());
+  
+  shareDialog.addEventListener("click", (e) => {
+    const rect = shareDialog.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+      shareDialog.close();
     }
   });
 
