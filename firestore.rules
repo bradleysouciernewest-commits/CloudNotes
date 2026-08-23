@@ -2,18 +2,15 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Match the specific path structure used by the Cloud Notes App
     match /artifacts/{appId}/users/{userId}/notes/{noteId} {
       
-      // Allow read/write access ONLY if:
-      // 1. The user is logged in (request.auth != null)
-      // 2. The user's authentication ID matches the {userId} in the path
+      // The owner retains full read/write access
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
+      // Anyone can read the note if it has been shared
+      allow read: if resource.data.isShared == true;
     }
     
-    // Default deny for everything else (implicit by default, but good to be explicit)
     match /{document=**} {
       allow read, write: if false;
     }
