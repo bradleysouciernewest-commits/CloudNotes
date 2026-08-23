@@ -444,7 +444,8 @@
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
       background: var(--md-sys-color-surface);
-      display: flex;
+      /* FIXED: Changed to none by default to prevent flashing for logged-in users */
+      display: none; 
       justify-content: center;
       align-items: center;
       z-index: 2000;
@@ -748,6 +749,7 @@
   let notes = {};
   let currentNoteId = getNoteIdFromURL();
   let unsubNotes = null;
+  let isInitialLoad = true; // State to track when the cloud notes first load into the UI
 
   // DOM Elements for Auth
   const authScreen = document.getElementById('authScreen');
@@ -845,6 +847,7 @@
       // Logged in
       userId = user.uid;
       authScreen.style.display = 'none';
+      isInitialLoad = true; // Reset initial load sequence for this user
       
       // Start listening to user's private cloud notes
       const notesRef = collection(db, 'artifacts', appId, 'users', userId, 'notes');
@@ -858,14 +861,23 @@
         notes = cloudNotes;
         renderNotes();
         
-        // Handle opened note resolution
+        // FIXED: Explicitly call openNote if currentNoteId exists on load so the URL param works
         if (currentNoteId && notes[currentNoteId]) {
-          // Note exists, sidebar active state updated via renderNotes()
-          // We do NOT strictly overwrite the inputs here if the user is actively typing,
-          // but for simplicity we rely on optimistic updates and assume 1 device writes at a time.
+          if (isInitialLoad) {
+            openNote(currentNoteId);
+          } else {
+             // For syncing across tabs/devices: update inputs if they are not actively being focused/edited
+             if (document.activeElement !== titleInput && document.activeElement !== contentInput) {
+               titleInput.value = notes[currentNoteId].title;
+               contentInput.value = notes[currentNoteId].content;
+             }
+          }
         } else if (currentNoteId && !notes[currentNoteId]) {
           showEmpty();
         }
+        
+        isInitialLoad = false;
+        
       }, (error) => {
         console.error("Firestore sync error:", error);
         showStatus("Error syncing cloud notes");
@@ -886,7 +898,6 @@
       showEmpty();
     }
   });
-
 
   const html = document.documentElement;
   const themeToggleBtn = document.getElementById('themeToggleBtn');
